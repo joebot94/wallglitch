@@ -17,6 +17,12 @@
   - command-driven seek (`seek`)
   - frame stepping (`step_frame`)
   - preview scrubber with start/end and frame nudge controls
+- Offline render job runner:
+  - command-driven start/cancel (`render`, `cancel_render`)
+  - in-app progress/status
+  - output writes to `~/Documents/GlitchLabRenders` when output path is not supplied
+- Real effect path in render pipeline:
+  - `Noise Corruption` is applied during export (supports selected-zones-only masking)
 - Clickable zone grid overlay with deterministic IDs (left-to-right, top-to-bottom)
 - Grid presets: `2x2`, `3x3`, `4x4`, `8x8`, `16x16`
 - Custom grid sizing controls for rows/cols (`1...16`)
@@ -36,8 +42,8 @@
 
 ## Placeholder in this milestone
 
-- Actual glitch video processing/rendering pipeline
-- Final export implementation (`render(...)` currently creates a placeholder render session + log entry)
+- Additional real effect implementations beyond `Noise Corruption`
+- Metal/GPU acceleration and optimization pass
 - Network/server control transport (the command model is ready, transport not added yet)
 
 ## Build and run

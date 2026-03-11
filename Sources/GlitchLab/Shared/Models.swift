@@ -61,6 +61,56 @@ struct TimelineState: Equatable {
     }
 }
 
+enum RenderPhase: Equatable {
+    case idle
+    case preparing
+    case running(progress: Double)
+    case completed(outputURL: URL)
+    case failed(message: String)
+    case cancelled
+}
+
+struct RenderState: Equatable {
+    var phase: RenderPhase = .idle
+
+    var isRunning: Bool {
+        switch phase {
+        case .preparing, .running:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var progress: Double {
+        switch phase {
+        case .running(let progress):
+            return progress
+        case .completed:
+            return 1
+        default:
+            return 0
+        }
+    }
+
+    var statusText: String {
+        switch phase {
+        case .idle:
+            return "Idle"
+        case .preparing:
+            return "Preparing..."
+        case .running(let progress):
+            return String(format: "Rendering %.0f%%", progress * 100)
+        case .completed(let outputURL):
+            return "Done: \(outputURL.lastPathComponent)"
+        case .failed(let message):
+            return "Failed: \(message)"
+        case .cancelled:
+            return "Cancelled"
+        }
+    }
+}
+
 struct CommandLogEntry: Identifiable, Equatable {
     let id = UUID()
     let timestamp: Date
@@ -157,6 +207,7 @@ enum AppCommand {
     case setEffectTargetSelectedOnly(effect: EffectType, selectedOnly: Bool)
     case applyPreset(name: String)
     case render(outputURL: URL?)
+    case cancelRender
 }
 
 extension AppCommand {
@@ -194,7 +245,9 @@ extension AppCommand {
             if let outputURL {
                 return "[CMD] render output=\(outputURL.lastPathComponent)"
             }
-            return "[CMD] render output=placeholder"
+            return "[CMD] render output=auto"
+        case .cancelRender:
+            return "[CMD] cancel_render"
         }
     }
 }

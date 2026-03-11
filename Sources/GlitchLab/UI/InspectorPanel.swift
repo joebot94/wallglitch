@@ -59,6 +59,15 @@ struct InspectorPanel: View {
             .background(Color.secondary.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
+            Divider()
+
+            Text("Render")
+                .font(.headline)
+            LabeledContent("Status", value: appState.renderState.statusText)
+            if appState.renderState.isRunning {
+                ProgressView(value: appState.renderState.progress)
+            }
+
             Spacer(minLength: 0)
         }
         .padding(12)

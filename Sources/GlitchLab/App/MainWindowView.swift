@@ -125,9 +125,29 @@ struct MainWindowView: View {
                 commandProcessor.process(.selectAllZones)
             }
 
-            Button("Render (Placeholder)") {
+            Button("Render") {
                 commandProcessor.process(.render(outputURL: nil))
             }
+            .disabled(appState.renderState.isRunning)
+
+            if appState.renderState.isRunning {
+                Button("Cancel Render") {
+                    commandProcessor.process(.cancelRender)
+                }
+            }
+
+            HStack(spacing: 6) {
+                if appState.renderState.isRunning {
+                    ProgressView(value: appState.renderState.progress)
+                        .frame(width: 90)
+                }
+                Text(appState.renderState.statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .frame(minWidth: 180, alignment: .leading)
 
             Spacer()
 

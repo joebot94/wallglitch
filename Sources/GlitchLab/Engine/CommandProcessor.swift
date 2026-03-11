@@ -6,17 +6,21 @@ final class CommandProcessor: ObservableObject {
     private let engine: GlitchEngine
     private let videoLoader: VideoLoader
     private let presetStore: PresetStore
+    private let offlineRenderer: OfflineVideoRenderer
+    private var renderTask: Task<Void, Never>?
 
     init(
         appState: AppState,
         engine: GlitchEngine = GlitchEngine(),
         videoLoader: VideoLoader = VideoLoader(),
-        presetStore: PresetStore = PresetStore()
+        presetStore: PresetStore = PresetStore(),
+        offlineRenderer: OfflineVideoRenderer = OfflineVideoRenderer()
     ) {
         self.appState = appState
         self.engine = engine
         self.videoLoader = videoLoader
         self.presetStore = presetStore
+        self.offlineRenderer = offlineRenderer
     }
 
     func process(_ command: AppCommand) {
@@ -71,14 +75,9 @@ final class CommandProcessor: ObservableObject {
             }
             engine.applyPreset(preset, to: appState)
         case .render(let outputURL):
-            let session = engine.prepareRenderSession(
-                sourceURL: appState.videoURL,
-                selectedZoneIDs: appState.zoneSelection.sortedIDs,
-                outputURL: outputURL
-            )
-            appState.appendLog(
-                "[SYS] render_placeholder session=\(session.shortID) source=\(session.sourceFileName) selected_zones=\(session.selectedZoneIDs.count)"
-            )
+            startRender(outputURL: outputURL)
+        case .cancelRender:
+            cancelRender()
         }
     }
 
@@ -142,5 +141,83 @@ final class CommandProcessor: ObservableObject {
         var updated = appState.effects
         mutate(&updated[index])
         appState.effects = updated
+    }
+
+    private func startRender(outputURL: URL?) {
+        guard renderTask == nil else {
+            appState.appendLog("[WARN] render_already_running")
+            return
+        }
+        guard let sourceURL = appState.videoURL else {
+            appState.appendLog("[WARN] render_no_source_video")
+            appState.renderState.phase = .failed(message: "No source video loaded.")
+            return
+        }
+
+        let request = RenderRequest(
+            sourceURL: sourceURL,
+            outputURL: outputURL,
+            effects: appState.effects,
+            grid: appState.gridConfiguration,
+            selectedZoneIDs: appState.zoneSelection.selectedZoneIDs
+        )
+
+        appState.renderState.phase = .preparing
+        appState.appendLog(
+            "[SYS] render_started source=\(sourceURL.lastPathComponent) selected_zones=\(request.selectedZoneIDs.count)"
+        )
+
+        let renderer = offlineRenderer
+        renderTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                let output = try await renderer.render(request: request) { progress in
+                    await MainActor.run {
+                        self.appState.renderState.phase = .running(progress: progress)
+                    }
+                }
+
+                await MainActor.run {
+                    let session = self.engine.prepareRenderSession(
+                        sourceURL: sourceURL,
+                        selectedZoneIDs: request.selectedZoneIDs.sorted(),
+                        outputURL: output
+                    )
+                    self.appState.renderState.phase = .completed(outputURL: output)
+                    self.appState.appendLog(
+                        "[SYS] render_completed session=\(session.shortID) output=\(output.lastPathComponent)"
+                    )
+                    self.renderTask = nil
+                }
+            } catch is CancellationError {
+                await MainActor.run {
+                    self.appState.renderState.phase = .cancelled
+                    self.appState.appendLog("[SYS] render_cancelled")
+                    self.renderTask = nil
+                }
+            } catch {
+                await MainActor.run {
+                    let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                    if message.lowercased().contains("cancel") {
+                        self.appState.renderState.phase = .cancelled
+                        self.appState.appendLog("[SYS] render_cancelled")
+                    } else {
+                        self.appState.renderState.phase = .failed(message: message)
+                        self.appState.appendLog("[ERR] render_failed reason=\(message)")
+                    }
+                    self.renderTask = nil
+                }
+            }
+        }
+    }
+
+    private func cancelRender() {
+        guard let renderTask else {
+            appState.appendLog("[WARN] cancel_render_without_active_job")
+            return
+        }
+        renderTask.cancel()
+        appState.appendLog("[SYS] render_cancel_requested")
     }
 }

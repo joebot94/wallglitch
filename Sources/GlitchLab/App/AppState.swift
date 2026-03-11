@@ -8,6 +8,7 @@ final class AppState: ObservableObject {
     @Published var videoURL: URL?
     @Published var videoInfo: VideoAssetInfo?
     @Published var timeline: TimelineState = TimelineState()
+    @Published var renderState: RenderState = RenderState()
     @Published var gridConfiguration: GridConfiguration = .default
     @Published var zoneSelection: ZoneSelectionModel = ZoneSelectionModel()
     @Published var activeZonePreset: ZoneSelectionPreset = .custom
