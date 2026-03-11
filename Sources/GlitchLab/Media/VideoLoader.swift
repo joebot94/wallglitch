@@ -7,6 +7,7 @@ actor VideoLoader {
         var width: Int?
         var height: Int?
         var durationSeconds: Double?
+        var nominalFrameRate: Double?
 
         if let duration = try? await asset.load(.duration) {
             durationSeconds = duration.seconds
@@ -20,6 +21,9 @@ actor VideoLoader {
             let transformed = naturalSize.applying(transform)
             width = Int(abs(transformed.width).rounded())
             height = Int(abs(transformed.height).rounded())
+            if let rate = try? await track.load(.nominalFrameRate) {
+                nominalFrameRate = Double(rate)
+            }
         }
 
         return VideoAssetInfo(
@@ -27,7 +31,8 @@ actor VideoLoader {
             fileName: url.lastPathComponent,
             width: width,
             height: height,
-            durationSeconds: durationSeconds
+            durationSeconds: durationSeconds,
+            nominalFrameRate: nominalFrameRate
         )
     }
 }

@@ -7,6 +7,7 @@ struct VideoAssetInfo: Equatable {
     let width: Int?
     let height: Int?
     let durationSeconds: Double?
+    let nominalFrameRate: Double?
 
     var resolutionText: String {
         guard let width, let height else { return "Unknown" }
@@ -16,6 +17,11 @@ struct VideoAssetInfo: Equatable {
     var durationText: String {
         guard let durationSeconds else { return "Unknown" }
         return AppFormatters.durationString(seconds: durationSeconds)
+    }
+
+    var fpsText: String {
+        guard let nominalFrameRate, nominalFrameRate > 0 else { return "Unknown" }
+        return String(format: "%.2f fps", nominalFrameRate)
     }
 
     var aspectRatio: CGFloat? {
@@ -29,7 +35,8 @@ struct VideoAssetInfo: Equatable {
             fileName: url.lastPathComponent,
             width: nil,
             height: nil,
-            durationSeconds: nil
+            durationSeconds: nil,
+            nominalFrameRate: nil
         )
     }
 }

@@ -43,6 +43,24 @@ struct GridConfiguration: Equatable {
     var label: String { "\(rows)x\(cols)" }
 }
 
+struct TimelineState: Equatable {
+    var currentTimeSeconds: Double = 0
+    var durationSeconds: Double = 0
+    var nominalFPS: Double = 30
+
+    var frameDuration: Double {
+        1.0 / max(nominalFPS, 1.0)
+    }
+
+    var hasDuration: Bool {
+        durationSeconds > 0
+    }
+
+    var clampedCurrentTime: Double {
+        min(max(currentTimeSeconds, 0), max(durationSeconds, 0))
+    }
+}
+
 struct CommandLogEntry: Identifiable, Equatable {
     let id = UUID()
     let timestamp: Date
@@ -132,6 +150,8 @@ enum AppCommand {
     case clearZones
     case selectAllZones
     case applyZonePreset(preset: ZoneSelectionPreset)
+    case seek(seconds: Double)
+    case stepFrame(delta: Int)
     case setEffectEnabled(effect: EffectType, enabled: Bool)
     case setEffectParameter(effect: EffectType, parameterID: String, value: Double)
     case setEffectTargetSelectedOnly(effect: EffectType, selectedOnly: Bool)
@@ -158,6 +178,10 @@ extension AppCommand {
             return "[CMD] select_all_zones"
         case .applyZonePreset(let preset):
             return "[CMD] apply_zone_preset name=\(preset.commandName)"
+        case .seek(let seconds):
+            return String(format: "[CMD] seek time=%.3f", seconds)
+        case .stepFrame(let delta):
+            return "[CMD] step_frame delta=\(delta)"
         case .setEffectEnabled(let effect, let enabled):
             return "[CMD] set_effect_enabled effect=\(effect.commandName) enabled=\(enabled)"
         case .setEffectParameter(let effect, let parameterID, let value):

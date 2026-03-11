@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import Foundation
 import SwiftUI
 
 struct PreviewPane: View {
@@ -41,13 +42,19 @@ struct PreviewPane: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+
+            timelineControls
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
         }
         .onAppear {
             configurePlayer(with: appState.videoURL)
         }
         .onChange(of: appState.videoURL) { newValue in
             configurePlayer(with: newValue)
+        }
+        .onChange(of: appState.timeline.currentTimeSeconds) { newValue in
+            seekPlayer(to: newValue)
         }
     }
 
@@ -86,6 +93,65 @@ struct PreviewPane: View {
         candidate.pause()
         candidate.actionAtItemEnd = .pause
         player = candidate
+        seekPlayer(to: appState.timeline.currentTimeSeconds)
+    }
+
+    private var timelineControls: some View {
+        let duration = appState.timeline.durationSeconds
+        let current = appState.timeline.currentTimeSeconds
+        let isEnabled = duration > 0
+
+        return HStack(spacing: 8) {
+            Button("<<") {
+                commandProcessor.process(.seek(seconds: 0))
+            }
+            .disabled(!isEnabled)
+
+            Button("<") {
+                commandProcessor.process(.stepFrame(delta: -1))
+            }
+            .disabled(!isEnabled)
+
+            Text(AppFormatters.durationString(seconds: current))
+                .font(.system(.caption, design: .monospaced))
+                .frame(width: 56, alignment: .leading)
+
+            Slider(
+                value: Binding(
+                    get: { appState.timeline.currentTimeSeconds },
+                    set: { seconds in
+                        commandProcessor.process(.seek(seconds: seconds))
+                    }
+                ),
+                in: 0...max(duration, 0.001)
+            )
+            .disabled(!isEnabled)
+
+            Text(AppFormatters.durationString(seconds: duration))
+                .font(.system(.caption, design: .monospaced))
+                .frame(width: 56, alignment: .trailing)
+
+            Button(">") {
+                commandProcessor.process(.stepFrame(delta: 1))
+            }
+            .disabled(!isEnabled)
+
+            Button(">>") {
+                commandProcessor.process(.seek(seconds: duration))
+            }
+            .disabled(!isEnabled)
+
+            Text(String(format: "%.2f fps", appState.timeline.nominalFPS))
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: 72, alignment: .trailing)
+        }
+    }
+
+    private func seekPlayer(to seconds: Double) {
+        guard let player else { return }
+        let target = CMTime(seconds: max(seconds, 0), preferredTimescale: 600)
+        player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     private func fittedSize(in container: CGSize, aspectRatio: CGFloat) -> CGSize {

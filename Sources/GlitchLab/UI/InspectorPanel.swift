@@ -21,6 +21,11 @@ struct InspectorPanel: View {
                     .lineLimit(2)
                 LabeledContent("Resolution", value: info.resolutionText)
                 LabeledContent("Duration", value: info.durationText)
+                LabeledContent("FPS", value: info.fpsText)
+                LabeledContent(
+                    "Playhead",
+                    value: "\(AppFormatters.durationString(seconds: appState.timeline.currentTimeSeconds)) / \(AppFormatters.durationString(seconds: appState.timeline.durationSeconds))"
+                )
             } else {
                 Text("No video selected")
                     .foregroundStyle(.secondary)

@@ -12,7 +12,11 @@
   - Right effects sidebar
   - Bottom command log
 - Video file importer (`Open Video`)
-- Video metadata loading (file name, resolution if available, duration if available)
+- Video metadata loading (file name, resolution if available, duration if available, nominal FPS if available)
+- Timeline foundation:
+  - command-driven seek (`seek`)
+  - frame stepping (`step_frame`)
+  - preview scrubber with start/end and frame nudge controls
 - Clickable zone grid overlay with deterministic IDs (left-to-right, top-to-bottom)
 - Grid presets: `2x2`, `3x3`, `4x4`, `8x8`, `16x16`
 - Custom grid sizing controls for rows/cols (`1...16`)
