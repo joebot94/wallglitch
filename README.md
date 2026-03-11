@@ -16,6 +16,7 @@
 - Clickable zone grid overlay with deterministic IDs (left-to-right, top-to-bottom)
 - Grid presets: `2x2`, `3x3`, `4x4`, `8x8`, `16x16`
 - Custom grid sizing controls for rows/cols (`1...16`)
+- Zone selection preset dropdown (All, 3x3, 2x2 Center, Corners, Cross+, X, diagonals, rows/cols, Outer Ring, Center 1, Custom)
 - Zone selection actions: toggle, clear, select all
 - Placeholder effect system with typed parameters for:
   - RGB Shift

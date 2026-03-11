@@ -32,6 +32,7 @@ struct InspectorPanel: View {
                 .font(.headline)
 
             LabeledContent("Size", value: appState.gridConfiguration.label)
+            LabeledContent("Zone Preset", value: appState.activeZonePreset.rawValue)
             LabeledContent("Selected", value: "\(appState.selectedZoneCount) / \(appState.gridConfiguration.zoneCount)")
 
             Text("Selected Zone IDs")

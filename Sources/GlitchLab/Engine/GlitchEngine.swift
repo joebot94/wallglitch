@@ -14,6 +14,7 @@ final class GlitchEngine {
         }
         selection.clamp(maxZoneID: appState.gridConfiguration.zoneCount)
         appState.zoneSelection = selection
+        appState.activeZonePreset = .custom
 
         var updatedEffects = appState.effects
         for setting in preset.effectSettings {

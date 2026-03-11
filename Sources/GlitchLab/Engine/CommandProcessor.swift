@@ -30,16 +30,24 @@ final class CommandProcessor: ObservableObject {
             var selection = appState.zoneSelection
             selection.clamp(maxZoneID: appState.gridConfiguration.zoneCount)
             appState.zoneSelection = selection
+            appState.activeZonePreset = .custom
         case .toggleZone(let id):
             mutateZoneSelection { $0.toggle(id) }
+            appState.activeZonePreset = .custom
         case .enableZone(let id):
             mutateZoneSelection { $0.enable(id) }
+            appState.activeZonePreset = .custom
         case .disableZone(let id):
             mutateZoneSelection { $0.disable(id) }
+            appState.activeZonePreset = .custom
         case .clearZones:
             mutateZoneSelection { $0.clear() }
+            appState.activeZonePreset = .custom
         case .selectAllZones:
             mutateZoneSelection { $0.selectAll(totalZones: appState.gridConfiguration.zoneCount) }
+            appState.activeZonePreset = .all
+        case .applyZonePreset(let preset):
+            handleZonePreset(preset)
         case .setEffectEnabled(let effect, let enabled):
             updateEffect(effect) { $0.isEnabled = enabled }
         case .setEffectParameter(let effect, let parameterID, let value):
@@ -86,6 +94,18 @@ final class CommandProcessor: ObservableObject {
                 )
             }
         }
+    }
+
+    private func handleZonePreset(_ preset: ZoneSelectionPreset) {
+        guard let ids = ZonePresetResolver.zoneIDs(for: preset, grid: appState.gridConfiguration) else {
+            appState.activeZonePreset = .custom
+            return
+        }
+        var selection = ZoneSelectionModel()
+        selection.set(ids: ids, maxZoneID: appState.gridConfiguration.zoneCount)
+        appState.zoneSelection = selection
+        appState.activeZonePreset = preset
+        appState.appendLog("[SYS] zone_preset_applied name=\(preset.commandName) selected_zones=\(selection.selectedZoneIDs.count)")
     }
 
     private func mutateZoneSelection(_ mutate: (inout ZoneSelectionModel) -> Void) {

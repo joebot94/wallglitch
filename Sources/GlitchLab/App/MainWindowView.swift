@@ -95,6 +95,21 @@ struct MainWindowView: View {
             )
             .frame(width: 110)
 
+            Picker(
+                "Zone Preset",
+                selection: Binding(
+                    get: { appState.activeZonePreset },
+                    set: { preset in
+                        commandProcessor.process(.applyZonePreset(preset: preset))
+                    }
+                )
+            ) {
+                ForEach(ZoneSelectionPreset.allCases) { preset in
+                    Text(preset.rawValue).tag(preset)
+                }
+            }
+            .pickerStyle(.menu)
+
             Button("Clear Zones") {
                 commandProcessor.process(.clearZones)
             }

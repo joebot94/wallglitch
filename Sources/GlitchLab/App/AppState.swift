@@ -9,6 +9,7 @@ final class AppState: ObservableObject {
     @Published var videoInfo: VideoAssetInfo?
     @Published var gridConfiguration: GridConfiguration = .default
     @Published var zoneSelection: ZoneSelectionModel = ZoneSelectionModel()
+    @Published var activeZonePreset: ZoneSelectionPreset = .custom
     @Published var effects: [EffectState] = DefaultEffectCatalog.makeDefaultEffects()
     @Published var commandLog: [CommandLogEntry] = [
         CommandLogEntry(timestamp: Date(), message: "[SYS] GlitchLab initialized")

@@ -31,6 +31,10 @@ struct ZoneSelectionModel: Equatable {
         selectedZoneIDs.removeAll()
     }
 
+    mutating func set(ids: Set<Int>, maxZoneID: Int) {
+        selectedZoneIDs = ids.filter { $0 >= 1 && $0 <= maxZoneID }
+    }
+
     mutating func selectAll(totalZones: Int) {
         guard totalZones > 0 else {
             clear()

@@ -131,6 +131,7 @@ enum AppCommand {
     case disableZone(id: Int)
     case clearZones
     case selectAllZones
+    case applyZonePreset(preset: ZoneSelectionPreset)
     case setEffectEnabled(effect: EffectType, enabled: Bool)
     case setEffectParameter(effect: EffectType, parameterID: String, value: Double)
     case setEffectTargetSelectedOnly(effect: EffectType, selectedOnly: Bool)
@@ -155,6 +156,8 @@ extension AppCommand {
             return "[CMD] clear_zones"
         case .selectAllZones:
             return "[CMD] select_all_zones"
+        case .applyZonePreset(let preset):
+            return "[CMD] apply_zone_preset name=\(preset.commandName)"
         case .setEffectEnabled(let effect, let enabled):
             return "[CMD] set_effect_enabled effect=\(effect.commandName) enabled=\(enabled)"
         case .setEffectParameter(let effect, let parameterID, let value):
