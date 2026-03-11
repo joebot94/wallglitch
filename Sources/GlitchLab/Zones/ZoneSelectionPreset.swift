@@ -24,6 +24,30 @@ enum ZoneSelectionPreset: String, CaseIterable, Identifiable {
     var commandName: String {
         rawValue.replacingOccurrences(of: " ", with: "_").lowercased()
     }
+
+    static let browserColumns: [[ZoneSelectionPreset]] = [
+        [
+            .all,
+            .centerTwoByTwo,
+            .xShape,
+            .diagonalDown,
+            .bothDiagonals,
+            .midRow,
+            .leftColumn,
+            .outerRing,
+            .custom
+        ],
+        [
+            .threeByThree,
+            .corners,
+            .crossPlus,
+            .diagonalUp,
+            .topRow,
+            .bottomRow,
+            .rightColumn,
+            .centerOne
+        ]
+    ]
 }
 
 enum ZonePresetResolver {

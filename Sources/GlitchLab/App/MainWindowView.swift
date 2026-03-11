@@ -6,6 +6,7 @@ struct MainWindowView: View {
     @EnvironmentObject private var commandProcessor: CommandProcessor
 
     @State private var isFileImporterPresented = false
+    @State private var isZonePresetBrowserPresented = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -95,20 +96,26 @@ struct MainWindowView: View {
             )
             .frame(width: 110)
 
-            Picker(
-                "Zone Preset",
-                selection: Binding(
-                    get: { appState.activeZonePreset },
-                    set: { preset in
-                        commandProcessor.process(.applyZonePreset(preset: preset))
-                    }
-                )
+            Button {
+                isZonePresetBrowserPresented.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Text("Zone Preset")
+                    Text(appState.activeZonePreset.rawValue)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(minWidth: 130, alignment: .leading)
+            }
+            .popover(
+                isPresented: $isZonePresetBrowserPresented,
+                attachmentAnchor: .point(.bottom),
+                arrowEdge: .bottom
             ) {
-                ForEach(ZoneSelectionPreset.allCases) { preset in
-                    Text(preset.rawValue).tag(preset)
+                ZonePresetBrowserView(activePreset: appState.activeZonePreset) { preset in
+                    commandProcessor.process(.applyZonePreset(preset: preset))
+                    isZonePresetBrowserPresented = false
                 }
             }
-            .pickerStyle(.menu)
 
             Button("Clear Zones") {
                 commandProcessor.process(.clearZones)
