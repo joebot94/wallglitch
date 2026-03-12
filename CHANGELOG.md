@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.25] - 2026-03-12
+
+- Rolled back top toolbar to a simpler pre-project-style single-row structure to eliminate persistent disappearing/cutoff behavior.
+- Removed recent top-bar inset/two-row experiments that were causing instability after `load_project` and `load_video`.
+- Kept project, queue, export, and grid commands available in the stable toolbar layout.
+
 ## [v0.1.24] - 2026-03-12
 
 - Fixed top toolbar disappearing after load-project/load-video flows by anchoring toolbar in a `safeAreaInset(edge: .top)` container.
