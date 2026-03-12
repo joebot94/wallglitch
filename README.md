@@ -2,6 +2,8 @@
 
 `GlitchLab` is a native macOS SwiftUI foundation for an offline 1080p glitch workflow with command-driven architecture.
 
+Release history lives in [CHANGELOG.md](./CHANGELOG.md).
+
 ## What is implemented
 
 - macOS SwiftUI app shell (`@main` app)
