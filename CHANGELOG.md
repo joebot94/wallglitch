@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - Planned: add export profile options (quality/bitrate presets).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.15] - 2026-03-11
+
+- Added `Zone Swap` speed control parameter: `Change Rate` (Hz).
+- `Change Rate` now controls how quickly swap pair layouts change over time.
+- Updated Zone Swap presets to include `Change Rate` values.
+
 ## [v0.1.14] - 2026-03-11
 
 - Added command-driven Effect Packs with bundled multi-effect configurations.

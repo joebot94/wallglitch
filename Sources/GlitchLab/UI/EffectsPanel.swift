@@ -149,7 +149,8 @@ struct EffectsPanel: View {
     private func zoneSwapPresetControl(effect: EffectState) -> some View {
         let rate = parameterValue(effect: effect, id: "swap_rate", fallback: 0.5)
         let pairCount = parameterValue(effect: effect, id: "pair_count", fallback: 4)
-        let activePreset = ZoneSwapPreset.matching(rate: rate, pairCount: pairCount)
+        let changeRate = parameterValue(effect: effect, id: "change_rate", fallback: 8)
+        let activePreset = ZoneSwapPreset.matching(rate: rate, pairCount: pairCount, changeRate: changeRate)
 
         return HStack(spacing: 8) {
             Text("Swap Preset")
@@ -174,6 +175,13 @@ struct EffectsPanel: View {
                                 effect: effect.type,
                                 parameterID: "pair_count",
                                 value: preset.pairCount
+                            )
+                        )
+                        commandProcessor.process(
+                            .setEffectParameter(
+                                effect: effect.type,
+                                parameterID: "change_rate",
+                                value: preset.changeRate
                             )
                         )
                     }
@@ -265,10 +273,22 @@ private enum ZoneSwapPreset: String, CaseIterable, Identifiable {
         }
     }
 
-    static func matching(rate: Double, pairCount: Double) -> ZoneSwapPreset {
+    var changeRate: Double {
+        switch self {
+        case .subtle: return 1.5
+        case .balanced: return 4
+        case .heavy: return 8
+        case .chaos: return 16
+        case .custom: return 8
+        }
+    }
+
+    static func matching(rate: Double, pairCount: Double, changeRate: Double) -> ZoneSwapPreset {
         let presets = allCases.filter { $0 != .custom }
         if let exact = presets.first(where: {
-            abs($0.rate - rate) < 0.03 && abs($0.pairCount - pairCount) < 0.6
+            abs($0.rate - rate) < 0.03 &&
+            abs($0.pairCount - pairCount) < 0.6 &&
+            abs($0.changeRate - changeRate) < 0.35
         }) {
             return exact
         }

@@ -24,6 +24,15 @@ struct ZoneSwapEffect: GlitchEffectDefinition {
                     maximum: 64.0,
                     step: 1.0,
                     value: 4.0
+                ),
+                EffectParameter(
+                    id: "change_rate",
+                    label: "Change Rate",
+                    minimum: 0.25,
+                    maximum: 60.0,
+                    step: 0.25,
+                    unit: "Hz",
+                    value: 8.0
                 )
             ]
         )

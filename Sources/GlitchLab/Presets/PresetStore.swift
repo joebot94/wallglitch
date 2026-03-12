@@ -69,7 +69,7 @@ struct PresetStore {
                     effect: .zoneSwap,
                     enabled: true,
                     selectedZonesOnly: true,
-                    parameterValues: ["swap_rate": 0.85, "pair_count": 10]
+                    parameterValues: ["swap_rate": 0.85, "pair_count": 10, "change_rate": 8]
                 ),
                 EffectPresetSetting(
                     effect: .blockScramble,

@@ -35,6 +35,7 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
 - Effect quick presets in UI:
   - Screen Tear: `Subtle`, `Balanced`, `Heavy`, `Brutal`, `Custom`
   - Zone Swap: `Subtle`, `Balanced`, `Heavy`, `Chaos`, `Custom`
+  - Zone Swap includes `Change Rate` (Hz) to control how quickly swap patterns update over time
 - Effect packs (command-driven):
   - `VHS Wreck`
   - `Swap Storm`

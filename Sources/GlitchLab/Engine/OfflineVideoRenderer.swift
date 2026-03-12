@@ -526,6 +526,7 @@ actor OfflineVideoRenderer {
     ) -> CIImage {
         let swapRate = min(max(parameterValue(in: effect, id: "swap_rate", defaultValue: 0), 0), 1)
         if swapRate <= 0 { return image }
+        let changeRate = min(max(parameterValue(in: effect, id: "change_rate", defaultValue: 8), 0.25), 60)
 
         let zonePool: [Int]
         if effect.selectedZonesOnly, !selectedZoneIDs.isEmpty {
@@ -546,7 +547,13 @@ actor OfflineVideoRenderer {
             cappedPairs
         )
 
-        var generator = SeededGenerator(seed: seedForZoneSwap(frameTimeSeconds: frameTimeSeconds, grid: grid))
+        var generator = SeededGenerator(
+            seed: seedForZoneSwap(
+                frameTimeSeconds: frameTimeSeconds,
+                changeRate: changeRate,
+                grid: grid
+            )
+        )
         var shuffledPool = zonePool
         shuffle(&shuffledPool, using: &generator)
 
@@ -638,8 +645,12 @@ actor OfflineVideoRenderer {
         return rect.isNull || rect.isEmpty ? nil : rect
     }
 
-    private func seedForZoneSwap(frameTimeSeconds: Double, grid: GridConfiguration) -> UInt64 {
-        let frameBucket = UInt64((frameTimeSeconds * 60).rounded())
+    private func seedForZoneSwap(
+        frameTimeSeconds: Double,
+        changeRate: Double,
+        grid: GridConfiguration
+    ) -> UInt64 {
+        let frameBucket = UInt64(max((frameTimeSeconds * changeRate).rounded(), 0))
         let gridSeed = UInt64((grid.rows * 131) ^ (grid.cols * 977))
         return frameBucket &* 1_315_423_911 ^ gridSeed &+ 0x9E3779B97F4A7C15
     }
