@@ -1,5 +1,6 @@
 import AVFoundation
 import CoreImage
+import CoreMedia
 import Foundation
 
 struct RenderRequest {
@@ -58,20 +59,32 @@ actor OfflineVideoRenderer {
         }
 
         let reader = try AVAssetReader(asset: asset)
-        let readerOutput = AVAssetReaderTrackOutput(
+        let videoReaderOutput = AVAssetReaderTrackOutput(
             track: videoTrack,
             outputSettings: [
                 kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
             ]
         )
-        readerOutput.alwaysCopiesSampleData = false
-        guard reader.canAdd(readerOutput) else {
+        videoReaderOutput.alwaysCopiesSampleData = false
+        guard reader.canAdd(videoReaderOutput) else {
             throw OfflineVideoRendererError.readerFailed("Cannot add track output.")
         }
-        reader.add(readerOutput)
+        reader.add(videoReaderOutput)
+
+        let audioTrack = try await asset.loadTracks(withMediaType: .audio).first
+        var audioReaderOutput: AVAssetReaderTrackOutput?
+        if let audioTrack {
+            let candidate = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: nil)
+            candidate.alwaysCopiesSampleData = false
+            guard reader.canAdd(candidate) else {
+                throw OfflineVideoRendererError.readerFailed("Cannot add audio track output.")
+            }
+            reader.add(candidate)
+            audioReaderOutput = candidate
+        }
 
         let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
-        let writerInput = AVAssetWriterInput(
+        let videoWriterInput = AVAssetWriterInput(
             mediaType: .video,
             outputSettings: [
                 AVVideoCodecKey: AVVideoCodecType.h264,
@@ -82,11 +95,11 @@ actor OfflineVideoRenderer {
                 ]
             ]
         )
-        writerInput.expectsMediaDataInRealTime = false
-        writerInput.transform = transform
+        videoWriterInput.expectsMediaDataInRealTime = false
+        videoWriterInput.transform = transform
 
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(
-            assetWriterInput: writerInput,
+            assetWriterInput: videoWriterInput,
             sourcePixelBufferAttributes: [
                 kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
                 kCVPixelBufferWidthKey as String: width,
@@ -94,10 +107,27 @@ actor OfflineVideoRenderer {
             ]
         )
 
-        guard writer.canAdd(writerInput) else {
+        guard writer.canAdd(videoWriterInput) else {
             throw OfflineVideoRendererError.writerFailed("Cannot add writer input.")
         }
-        writer.add(writerInput)
+        writer.add(videoWriterInput)
+
+        var audioWriterInput: AVAssetWriterInput?
+        if let audioTrack {
+            let formatDescriptions = try await audioTrack.load(.formatDescriptions)
+            let sourceFormatHint = formatDescriptions.first
+            let candidate = AVAssetWriterInput(
+                mediaType: .audio,
+                outputSettings: nil,
+                sourceFormatHint: sourceFormatHint
+            )
+            candidate.expectsMediaDataInRealTime = false
+            guard writer.canAdd(candidate) else {
+                throw OfflineVideoRendererError.writerFailed("Cannot add audio writer input.")
+            }
+            writer.add(candidate)
+            audioWriterInput = candidate
+        }
 
         guard reader.startReading() else {
             throw OfflineVideoRendererError.readerFailed(reader.error?.localizedDescription ?? "Unknown reader error")
@@ -116,7 +146,7 @@ actor OfflineVideoRenderer {
         while reader.status == .reading {
             try Task.checkCancellation()
 
-            guard let sampleBuffer = readerOutput.copyNextSampleBuffer() else {
+            guard let sampleBuffer = videoReaderOutput.copyNextSampleBuffer() else {
                 break
             }
 
@@ -132,7 +162,7 @@ actor OfflineVideoRenderer {
                 zoneMaskImage: zoneMaskImage
             )
 
-            while !writerInput.isReadyForMoreMediaData {
+            while !videoWriterInput.isReadyForMoreMediaData {
                 try Task.checkCancellation()
                 try await Task.sleep(nanoseconds: 1_000_000)
             }
@@ -156,7 +186,32 @@ actor OfflineVideoRenderer {
             await onProgress(progress)
         }
 
-        writerInput.markAsFinished()
+        videoWriterInput.markAsFinished()
+
+        if
+            let audioReaderOutput,
+            let audioWriterInput
+        {
+            while true {
+                try Task.checkCancellation()
+
+                if !audioWriterInput.isReadyForMoreMediaData {
+                    try await Task.sleep(nanoseconds: 1_000_000)
+                    continue
+                }
+
+                guard let audioSampleBuffer = audioReaderOutput.copyNextSampleBuffer() else {
+                    break
+                }
+
+                if !audioWriterInput.append(audioSampleBuffer) {
+                    throw OfflineVideoRendererError.writerFailed(
+                        writer.error?.localizedDescription ?? "Failed appending audio sample."
+                    )
+                }
+            }
+            audioWriterInput.markAsFinished()
+        }
 
         if Task.isCancelled {
             reader.cancelReading()
@@ -181,14 +236,78 @@ actor OfflineVideoRenderer {
         request: RenderRequest,
         zoneMaskImage: CIImage?
     ) -> CIImage {
-        guard
-            let effect = request.effects.first(where: { $0.type == .noiseCorruption && $0.isEnabled }),
-            let amountParameter = effect.parameters.first(where: { $0.id == "noise" })
-        else {
-            return image
+        var currentImage = image
+        for effect in request.effects where effect.isEnabled {
+            switch effect.type {
+            case .rgbShift:
+                currentImage = applyMaskedEffect(
+                    baseImage: currentImage,
+                    effect: effect,
+                    selectedZoneIDs: request.selectedZoneIDs,
+                    zoneMaskImage: zoneMaskImage
+                ) { baseImage in
+                    applyRGBShift(to: baseImage, effect: effect)
+                }
+            case .screenTear:
+                currentImage = applyMaskedEffect(
+                    baseImage: currentImage,
+                    effect: effect,
+                    selectedZoneIDs: request.selectedZoneIDs,
+                    zoneMaskImage: zoneMaskImage
+                ) { baseImage in
+                    applyScreenTear(to: baseImage, effect: effect)
+                }
+            case .pixelDrift:
+                currentImage = applyMaskedEffect(
+                    baseImage: currentImage,
+                    effect: effect,
+                    selectedZoneIDs: request.selectedZoneIDs,
+                    zoneMaskImage: zoneMaskImage
+                ) { baseImage in
+                    applyPixelDrift(to: baseImage, effect: effect)
+                }
+            case .noiseCorruption:
+                currentImage = applyMaskedEffect(
+                    baseImage: currentImage,
+                    effect: effect,
+                    selectedZoneIDs: request.selectedZoneIDs,
+                    zoneMaskImage: zoneMaskImage
+                ) { baseImage in
+                    applyNoiseCorruption(to: baseImage, effect: effect)
+                }
+            case .zoneSwap, .blockScramble, .temporalHold:
+                continue
+            }
         }
+        return currentImage
+    }
 
-        let amount = min(max(amountParameter.value, 0), 1)
+    private func applyMaskedEffect(
+        baseImage: CIImage,
+        effect: EffectState,
+        selectedZoneIDs: Set<Int>,
+        zoneMaskImage: CIImage?,
+        transform: (CIImage) -> CIImage
+    ) -> CIImage {
+        let transformed = transform(baseImage).cropped(to: baseImage.extent)
+        guard
+            effect.selectedZonesOnly,
+            !selectedZoneIDs.isEmpty,
+            let zoneMaskImage
+        else {
+            return transformed
+        }
+        return transformed.applyingFilter(
+            "CIBlendWithMask",
+            parameters: [
+                kCIInputBackgroundImageKey: baseImage,
+                kCIInputMaskImageKey: zoneMaskImage
+            ]
+        )
+    }
+
+    private func applyNoiseCorruption(to image: CIImage, effect: EffectState) -> CIImage {
+        let amount = min(max(parameterValue(in: effect, id: "noise", defaultValue: 0), 0), 1)
         if amount <= 0 {
             return image
         }
@@ -208,22 +327,134 @@ actor OfflineVideoRenderer {
 
         guard let noise else { return image }
 
-        let noisyImage = noise.applyingFilter(
+        return noise.applyingFilter(
             "CISourceOverCompositing",
             parameters: [kCIInputBackgroundImageKey: image]
         )
+    }
 
-        guard effect.selectedZonesOnly, let zoneMaskImage, !request.selectedZoneIDs.isEmpty else {
-            return noisyImage
-        }
+    private func applyRGBShift(to image: CIImage, effect: EffectState) -> CIImage {
+        let amount = min(max(parameterValue(in: effect, id: "amount", defaultValue: 0), 0), 1)
+        if amount <= 0 { return image }
 
-        return noisyImage.applyingFilter(
-            "CIBlendWithMask",
+        let angle = parameterValue(in: effect, id: "angle", defaultValue: 0) * .pi / 180
+        let distance = amount * 30
+        let dx = cos(angle) * distance
+        let dy = sin(angle) * distance
+
+        let red = isolateChannel(
+            image.transformed(by: CGAffineTransform(translationX: dx, y: dy)),
+            red: 1,
+            green: 0,
+            blue: 0
+        )
+        let green = isolateChannel(
+            image.transformed(by: CGAffineTransform(translationX: -dx * 0.7, y: -dy * 0.7)),
+            red: 0,
+            green: 1,
+            blue: 0
+        )
+        let blue = isolateChannel(
+            image.transformed(by: CGAffineTransform(translationX: -dy * 0.4, y: dx * 0.4)),
+            red: 0,
+            green: 0,
+            blue: 1
+        )
+
+        return red
+            .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: green])
+            .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: blue])
+            .cropped(to: image.extent)
+    }
+
+    private func applyScreenTear(to image: CIImage, effect: EffectState) -> CIImage {
+        let intensity = min(max(parameterValue(in: effect, id: "intensity", defaultValue: 0), 0), 1)
+        if intensity <= 0 { return image }
+
+        let lineCount = max(parameterValue(in: effect, id: "line_count", defaultValue: 8), 1)
+        let blurRadius = max(3, image.extent.width / lineCount)
+
+        let displacementMap = CIFilter(name: "CIRandomGenerator")?.outputImage?
+            .cropped(to: image.extent)
+            .applyingFilter(
+                "CIColorControls",
+                parameters: [
+                    kCIInputSaturationKey: 0,
+                    kCIInputContrastKey: 1 + (intensity * 3)
+                ]
+            )
+            .applyingFilter(
+                "CIMotionBlur",
+                parameters: [
+                    kCIInputRadiusKey: blurRadius,
+                    kCIInputAngleKey: 0
+                ]
+            )
+
+        guard let displacementMap else { return image }
+
+        return image.applyingFilter(
+            "CIDisplacementDistortion",
             parameters: [
-                kCIInputBackgroundImageKey: image,
-                kCIInputMaskImageKey: zoneMaskImage
+                "inputDisplacementImage": displacementMap,
+                kCIInputScaleKey: intensity * 80
             ]
         )
+    }
+
+    private func applyPixelDrift(to image: CIImage, effect: EffectState) -> CIImage {
+        let drift = min(max(parameterValue(in: effect, id: "drift", defaultValue: 0), 0), 1)
+        if drift <= 0 { return image }
+
+        let blockSize = max(parameterValue(in: effect, id: "block_size", defaultValue: 8), 1)
+        let pixelated = image.applyingFilter(
+            "CIPixellate",
+            parameters: [
+                kCIInputScaleKey: blockSize,
+                kCIInputCenterKey: CIVector(x: image.extent.midX, y: image.extent.midY)
+            ]
+        )
+
+        let shifted = pixelated.transformed(by: CGAffineTransform(
+            translationX: drift * 24,
+            y: drift * 10
+        ))
+        let alpha = min(0.9, 0.2 + (drift * 0.6))
+        let driftLayer = shifted.applyingFilter(
+            "CIColorMatrix",
+            parameters: [
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: alpha)
+            ]
+        )
+        return driftLayer.applyingFilter(
+            "CISourceOverCompositing",
+            parameters: [kCIInputBackgroundImageKey: image]
+        )
+    }
+
+    private func isolateChannel(
+        _ image: CIImage,
+        red: Double,
+        green: Double,
+        blue: Double
+    ) -> CIImage {
+        image.applyingFilter(
+            "CIColorMatrix",
+            parameters: [
+                "inputRVector": CIVector(x: red, y: 0, z: 0, w: 0),
+                "inputGVector": CIVector(x: 0, y: green, z: 0, w: 0),
+                "inputBVector": CIVector(x: 0, y: 0, z: blue, w: 0),
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1)
+            ]
+        )
+    }
+
+    private func parameterValue(
+        in effect: EffectState,
+        id: String,
+        defaultValue: Double
+    ) -> Double {
+        effect.parameters.first(where: { $0.id == id })?.value ?? defaultValue
     }
 
     private func makeZoneMaskImage(

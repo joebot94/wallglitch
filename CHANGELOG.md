@@ -4,8 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Planned: add audio passthrough in offline renders.
-- Planned: add additional real export effects (starting with RGB Shift).
+- Planned: add remaining real export effects (`Zone Swap`, `Block Scramble`, `Temporal Hold`).
+- Planned: add export profile options (quality/bitrate presets).
+
+## [v0.1.8] - 2026-03-11
+
+- Added audio passthrough in offline exports.
+- Added real export effect implementations for:
+  - RGB Shift
+  - Screen Tear
+  - Pixel Drift
+- Upgraded render effect chain to process multiple enabled effects in sequence.
+- Added selected-zones-only masking support for each implemented real effect in export.
 
 ## [v0.1.6] - 2026-03-11
 
@@ -38,4 +48,3 @@ All notable changes to this project will be documented in this file.
 - Added modular SwiftUI app structure and command processor architecture.
 - Added grid/zone selection UX and effect model scaffolding.
 - Added video metadata loading, preview surface, and command log panel.
-

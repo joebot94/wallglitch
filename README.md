@@ -22,9 +22,11 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
 - Offline render job runner:
   - command-driven start/cancel (`render`, `cancel_render`)
   - in-app progress/status
+  - source audio passthrough in export
   - output writes to `~/Documents/GlitchLabRenders` when output path is not supplied
 - Real effect path in render pipeline:
-  - `Noise Corruption` is applied during export (supports selected-zones-only masking)
+  - `RGB Shift`, `Screen Tear`, `Pixel Drift`, and `Noise Corruption` are applied during export
+  - selected-zones-only masking is supported for each implemented effect
 - Clickable zone grid overlay with deterministic IDs (left-to-right, top-to-bottom)
 - Grid presets: `2x2`, `3x3`, `4x4`, `8x8`, `16x16`
 - Custom grid sizing controls for rows/cols (`1...16`)
@@ -44,7 +46,7 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
 
 ## Placeholder in this milestone
 
-- Additional real effect implementations beyond `Noise Corruption`
+- Additional real effect implementations (`Zone Swap`, `Block Scramble`, `Temporal Hold`)
 - Metal/GPU acceleration and optimization pass
 - Network/server control transport (the command model is ready, transport not added yet)
 
