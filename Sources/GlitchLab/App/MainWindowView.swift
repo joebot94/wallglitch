@@ -11,8 +11,6 @@ struct MainWindowView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            topToolbar
-            Divider()
             HStack(spacing: 0) {
                 InspectorPanel()
                     .frame(width: 250)
@@ -40,6 +38,12 @@ struct MainWindowView: View {
             }
             .frame(height: 190)
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 0) {
+                topToolbar
+                Divider()
+            }
+        }
         .fileImporter(
             isPresented: $isFileImporterPresented,
             allowedContentTypes: [.movie, .quickTimeMovie, .mpeg4Movie],
@@ -57,126 +61,129 @@ struct MainWindowView: View {
 
     private var topToolbar: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                Button("Open Video") {
-                    isFileImporterPresented = true
-                }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    Button("Open Video") {
+                        isFileImporterPresented = true
+                    }
 
-                Button("Load Project") {
-                    openProjectPanel()
-                }
+                    Button("Load Project") {
+                        openProjectPanel()
+                    }
 
-                Button("Save Project") {
-                    saveProjectPanel()
-                }
+                    Button("Save Project") {
+                        saveProjectPanel()
+                    }
 
-                Picker(
-                    "Grid Preset",
-                    selection: Binding(
-                        get: { appState.gridPreset?.rawValue ?? "Custom" },
-                        set: { selected in
-                            guard let preset = GridPreset(rawValue: selected) else { return }
-                            commandProcessor.process(.setGrid(rows: preset.rows, cols: preset.cols))
+                    Picker(
+                        "Grid Preset",
+                        selection: Binding(
+                            get: { appState.gridPreset?.rawValue ?? "Custom" },
+                            set: { selected in
+                                guard let preset = GridPreset(rawValue: selected) else { return }
+                                commandProcessor.process(.setGrid(rows: preset.rows, cols: preset.cols))
+                            }
+                        )
+                    ) {
+                        ForEach(GridPreset.allCases) { preset in
+                            Text(preset.rawValue).tag(preset.rawValue)
                         }
+                        Text("Custom").tag("Custom")
+                    }
+                    .pickerStyle(.menu)
+
+                    Stepper(
+                        "Rows \(appState.gridConfiguration.rows)",
+                        value: Binding(
+                            get: { appState.gridConfiguration.rows },
+                            set: { newRows in
+                                commandProcessor.process(
+                                    .setGrid(rows: newRows, cols: appState.gridConfiguration.cols)
+                                )
+                            }
+                        ),
+                        in: 1...16
                     )
-                ) {
-                    ForEach(GridPreset.allCases) { preset in
-                        Text(preset.rawValue).tag(preset.rawValue)
-                    }
-                    Text("Custom").tag("Custom")
-                }
-                .pickerStyle(.menu)
+                    .frame(width: 110)
 
-                Stepper(
-                    "Rows \(appState.gridConfiguration.rows)",
-                    value: Binding(
-                        get: { appState.gridConfiguration.rows },
-                        set: { newRows in
-                            commandProcessor.process(
-                                .setGrid(rows: newRows, cols: appState.gridConfiguration.cols)
-                            )
-                        }
-                    ),
-                    in: 1...16
-                )
-                .frame(width: 110)
-
-                Stepper(
-                    "Cols \(appState.gridConfiguration.cols)",
-                    value: Binding(
-                        get: { appState.gridConfiguration.cols },
-                        set: { newCols in
-                            commandProcessor.process(
-                                .setGrid(rows: appState.gridConfiguration.rows, cols: newCols)
-                            )
-                        }
-                    ),
-                    in: 1...16
-                )
-                .frame(width: 110)
-
-                Button {
-                    isZonePresetBrowserPresented.toggle()
-                } label: {
-                    HStack(spacing: 6) {
-                        Text("Zone Preset")
-                        Text(appState.activeZonePreset.rawValue)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(minWidth: 130, alignment: .leading)
-                }
-                .popover(
-                    isPresented: $isZonePresetBrowserPresented,
-                    attachmentAnchor: .point(.bottom),
-                    arrowEdge: .bottom
-                ) {
-                    ZonePresetBrowserView(activePreset: appState.activeZonePreset) { preset in
-                        commandProcessor.process(.applyZonePreset(preset: preset))
-                        isZonePresetBrowserPresented = false
-                    }
-                }
-
-                Button("Clear Zones") {
-                    commandProcessor.process(.clearZones)
-                }
-
-                Button("Select All") {
-                    commandProcessor.process(.selectAllZones)
-                }
-
-                Picker(
-                    "Export",
-                    selection: Binding(
-                        get: { appState.exportProfile },
-                        set: { profile in
-                            commandProcessor.process(.setExportProfile(profile: profile))
-                        }
+                    Stepper(
+                        "Cols \(appState.gridConfiguration.cols)",
+                        value: Binding(
+                            get: { appState.gridConfiguration.cols },
+                            set: { newCols in
+                                commandProcessor.process(
+                                    .setGrid(rows: appState.gridConfiguration.rows, cols: newCols)
+                                )
+                            }
+                        ),
+                        in: 1...16
                     )
-                ) {
-                    ForEach(ExportProfile.allCases) { profile in
-                        Text(profile.rawValue).tag(profile)
+                    .frame(width: 110)
+
+                    Button {
+                        isZonePresetBrowserPresented.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("Zone Preset")
+                            Text(appState.activeZonePreset.rawValue)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(minWidth: 130, alignment: .leading)
+                    }
+                    .popover(
+                        isPresented: $isZonePresetBrowserPresented,
+                        attachmentAnchor: .point(.bottom),
+                        arrowEdge: .bottom
+                    ) {
+                        ZonePresetBrowserView(activePreset: appState.activeZonePreset) { preset in
+                            commandProcessor.process(.applyZonePreset(preset: preset))
+                            isZonePresetBrowserPresented = false
+                        }
+                    }
+
+                    Button("Clear Zones") {
+                        commandProcessor.process(.clearZones)
+                    }
+
+                    Button("Select All") {
+                        commandProcessor.process(.selectAllZones)
+                    }
+
+                    Picker(
+                        "Export",
+                        selection: Binding(
+                            get: { appState.exportProfile },
+                            set: { profile in
+                                commandProcessor.process(.setExportProfile(profile: profile))
+                            }
+                        )
+                    ) {
+                        ForEach(ExportProfile.allCases) { profile in
+                            Text(profile.rawValue).tag(profile)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Button("Queue Render") {
+                        commandProcessor.process(.render(outputURL: nil))
+                    }
+                    .disabled(appState.videoURL == nil)
+
+                    if appState.renderState.isRunning {
+                        Button("Cancel Render") {
+                            commandProcessor.process(.cancelRender)
+                        }
+                    }
+
+                    if appState.queuedRenderCount > 0 {
+                        Button("Clear Queue") {
+                            commandProcessor.process(.clearRenderQueue)
+                        }
                     }
                 }
-                .pickerStyle(.menu)
-
-                Button("Queue Render") {
-                    commandProcessor.process(.render(outputURL: nil))
-                }
-                .disabled(appState.videoURL == nil)
-
-                if appState.renderState.isRunning {
-                    Button("Cancel Render") {
-                        commandProcessor.process(.cancelRender)
-                    }
-                }
-
-                if appState.queuedRenderCount > 0 {
-                    Button("Clear Queue") {
-                        commandProcessor.process(.clearRenderQueue)
-                    }
-                }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 12)
             .controlSize(.small)
 
             HStack(spacing: 12) {
@@ -223,6 +230,7 @@ struct MainWindowView: View {
             .padding(.horizontal, 12)
         }
         .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(.ultraThinMaterial)
     }
 

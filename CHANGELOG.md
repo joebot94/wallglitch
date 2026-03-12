@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.24] - 2026-03-12
+
+- Fixed top toolbar disappearing after load-project/load-video flows by anchoring toolbar in a `safeAreaInset(edge: .top)` container.
+- Reintroduced horizontal scrolling only for the controls row (with leading alignment) to avoid overflow clipping while keeping interactions active.
+- Kept status/project row pinned and stable under the controls row.
+
 ## [v0.1.23] - 2026-03-12
 
 - Fixed toolbar collapse regression by removing strict row/container height clipping in the top bar.
