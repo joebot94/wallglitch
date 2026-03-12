@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.19] - 2026-03-12
+
+- Fixed top toolbar clipping/cutoff on narrower window widths and longer status text.
+- Toolbar now uses horizontal scrolling with stable minimum layout width so controls remain accessible after load/save/render state changes.
+
 ## [v0.1.18] - 2026-03-12
 
 - Added command-driven automation/keyframe system for effect parameters:
