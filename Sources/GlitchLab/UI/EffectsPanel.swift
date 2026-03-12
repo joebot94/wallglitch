@@ -43,6 +43,10 @@ struct EffectsPanel: View {
             }
             .pickerStyle(.segmented)
 
+            Text("A/B applies to queued renders in this build (live effected preview is a later realtime milestone).")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
             HStack {
                 Text("Solo")
                     .font(.caption)

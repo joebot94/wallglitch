@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.23] - 2026-03-12
+
+- Fixed toolbar collapse regression by removing strict row/container height clipping in the top bar.
+- Added clearer A/B visibility:
+  - compare mode now appears in queue rows and render lifecycle log lines (`render_queued`, `render_started`)
+  - toolbar status row now displays active compare mode
+  - effects panel clarifies that A/B currently applies to queued renders (live effected preview is future realtime work)
+
 ## [v0.1.22] - 2026-03-12
 
 - Fixed non-responsive top-bar controls by removing the horizontal `ScrollView` wrapper from the primary controls row.

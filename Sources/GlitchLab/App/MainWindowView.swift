@@ -177,7 +177,7 @@ struct MainWindowView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .frame(height: 30)
+            .controlSize(.small)
 
             HStack(spacing: 12) {
                 HStack(spacing: 6) {
@@ -198,6 +198,11 @@ struct MainWindowView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 72, alignment: .leading)
 
+                Text("Mode: \(appState.compareMode.commandName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 90, alignment: .leading)
+
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 2) {
@@ -216,11 +221,8 @@ struct MainWindowView: View {
                 .frame(minWidth: 220, alignment: .trailing)
             }
             .padding(.horizontal, 12)
-            .frame(height: 24)
         }
         .padding(.vertical, 8)
-        .frame(height: 78)
-        .clipped()
         .background(.ultraThinMaterial)
     }
 

@@ -43,7 +43,7 @@ struct BottomRightPanel: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.sourceName)
                                 .lineLimit(1)
-                            Text(item.exportProfile.rawValue)
+                            Text("\(item.exportProfile.rawValue) • \(item.compareMode.rawValue)")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }

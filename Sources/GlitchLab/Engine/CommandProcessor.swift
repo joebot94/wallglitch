@@ -345,7 +345,7 @@ final class CommandProcessor: ObservableObject {
 
         appState.renderQueue.append(item)
         appState.appendLog(
-            "[SYS] render_queued id=\(item.id.uuidString.prefix(8)) source=\(sourceURL.lastPathComponent) queue=\(appState.renderQueue.count)"
+            "[SYS] render_queued id=\(item.id.uuidString.prefix(8)) source=\(sourceURL.lastPathComponent) compare=\(item.compareMode.commandName) queue=\(appState.renderQueue.count)"
         )
         startNextQueuedRenderIfNeeded()
     }
@@ -373,7 +373,7 @@ final class CommandProcessor: ObservableObject {
 
         appState.renderState.phase = .preparing
         appState.appendLog(
-            "[SYS] render_started source=\(job.sourceName) profile=\(request.exportProfile.commandName) selected_zones=\(request.selectedZoneIDs.count)"
+            "[SYS] render_started source=\(job.sourceName) profile=\(request.exportProfile.commandName) compare=\(job.compareMode.commandName) selected_zones=\(request.selectedZoneIDs.count)"
         )
 
         let renderer = offlineRenderer
