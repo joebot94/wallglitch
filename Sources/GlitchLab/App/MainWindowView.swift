@@ -5,12 +5,8 @@ struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var commandProcessor: CommandProcessor
 
-    @State private var isZonePresetBrowserPresented = false
-
     var body: some View {
         VStack(spacing: 0) {
-            topToolbar
-            Divider()
             HStack(spacing: 0) {
                 InspectorPanel()
                     .frame(width: 250)
@@ -25,7 +21,9 @@ struct MainWindowView: View {
                 SidebarView()
                     .frame(width: 360)
             }
+
             Divider()
+
             HStack(spacing: 0) {
                 LogPanel()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -38,16 +36,30 @@ struct MainWindowView: View {
             }
             .frame(height: 190)
         }
+        .toolbar {
+            nativeToolbarContent
+        }
     }
 
-    private var topToolbar: some View {
-        HStack(spacing: 12) {
+    @ToolbarContentBuilder
+    private var nativeToolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .automatic) {
             Button("Open Video") {
                 openVideoPanel()
             }
 
+            Button("Load Project") {
+                openProjectPanel()
+            }
+
+            Button("Save Project") {
+                saveProjectPanel()
+            }
+        }
+
+        ToolbarItemGroup(placement: .automatic) {
             Picker(
-                "Grid Preset",
+                "Grid",
                 selection: Binding(
                     get: { appState.gridPreset?.rawValue ?? "Custom" },
                     set: { selected in
@@ -61,7 +73,7 @@ struct MainWindowView: View {
                 }
                 Text("Custom").tag("Custom")
             }
-            .pickerStyle(.menu)
+            .frame(width: 88)
 
             Stepper(
                 "Rows \(appState.gridConfiguration.rows)",
@@ -91,24 +103,11 @@ struct MainWindowView: View {
             )
             .frame(width: 110)
 
-            Button {
-                isZonePresetBrowserPresented.toggle()
-            } label: {
-                HStack(spacing: 6) {
-                    Text("Zone Preset")
-                    Text(appState.activeZonePreset.rawValue)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(minWidth: 130, alignment: .leading)
-            }
-            .popover(
-                isPresented: $isZonePresetBrowserPresented,
-                attachmentAnchor: .point(.bottom),
-                arrowEdge: .bottom
-            ) {
-                ZonePresetBrowserView(activePreset: appState.activeZonePreset) { preset in
-                    commandProcessor.process(.applyZonePreset(preset: preset))
-                    isZonePresetBrowserPresented = false
+            Menu("Zone \(appState.activeZonePreset.rawValue)") {
+                ForEach(ZoneSelectionPreset.allCases) { preset in
+                    Button(preset.rawValue) {
+                        commandProcessor.process(.applyZonePreset(preset: preset))
+                    }
                 }
             }
 
@@ -119,34 +118,50 @@ struct MainWindowView: View {
             Button("Select All") {
                 commandProcessor.process(.selectAllZones)
             }
+        }
 
-            Button("Render") {
-                commandProcessor.process(.render(outputURL: nil))
-            }
-            .disabled(appState.renderState.isRunning)
-
-            if appState.renderState.isRunning {
-                Button("Cancel Render") {
-                    commandProcessor.process(.cancelRender)
+        ToolbarItemGroup(placement: .automatic) {
+            Picker(
+                "Export",
+                selection: Binding(
+                    get: { appState.exportProfile },
+                    set: { profile in
+                        commandProcessor.process(.setExportProfile(profile: profile))
+                    }
+                )
+            ) {
+                ForEach(ExportProfile.allCases) { profile in
+                    Text(profile.rawValue).tag(profile)
                 }
             }
+            .frame(width: 110)
 
-            HStack(spacing: 6) {
+            Button(appState.renderState.isRunning ? "Cancel Render" : "Queue Render") {
                 if appState.renderState.isRunning {
-                    ProgressView(value: appState.renderState.progress)
-                        .frame(width: 90)
+                    commandProcessor.process(.cancelRender)
+                } else {
+                    commandProcessor.process(.render(outputURL: nil))
                 }
+            }
+            .disabled(!appState.renderState.isRunning && appState.videoURL == nil)
+        }
+
+        ToolbarItem(placement: .status) {
+            HStack(spacing: 8) {
                 Text(appState.renderState.statusText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+
+                if appState.queuedRenderCount > 0 {
+                    Text("Queue \(appState.queuedRenderCount)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .frame(minWidth: 180, alignment: .leading)
+        }
 
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 2) {
+        ToolbarItem(placement: .principal) {
+            VStack(alignment: .trailing, spacing: 1) {
                 Text(appState.projectName)
                     .font(.headline)
                 Text("Preset: \(appState.activePresetName)")
@@ -154,8 +169,6 @@ struct MainWindowView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(12)
-        .background(.ultraThinMaterial)
     }
 
     private func openVideoPanel() {
@@ -168,5 +181,35 @@ struct MainWindowView: View {
         if panel.runModal() == .OK, let url = panel.url {
             commandProcessor.process(.loadVideo(url: url))
         }
+    }
+
+    private func openProjectPanel() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.glitchLabProject]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.title = "Load GlitchLab Project"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            commandProcessor.process(.loadProject(url: url))
+        }
+    }
+
+    private func saveProjectPanel() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.glitchLabProject]
+        panel.title = "Save GlitchLab Project"
+        panel.nameFieldStringValue = "\(appState.projectName).glitchlab"
+        panel.canCreateDirectories = true
+
+        if panel.runModal() == .OK, let url = panel.url {
+            commandProcessor.process(.saveProject(url: url))
+        }
+    }
+}
+
+private extension UTType {
+    static var glitchLabProject: UTType {
+        UTType(filenameExtension: "glitchlab") ?? .json
     }
 }
