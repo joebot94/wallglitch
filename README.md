@@ -32,6 +32,9 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
 - Custom grid sizing controls for rows/cols (`1...16`)
 - Zone selection preset two-column browser popover (All, 3x3, 2x2 Center, Corners, Cross+, X, diagonals, rows/cols, Outer Ring, Center 1, Custom)
 - Zone selection actions: toggle, clear, select all
+- Effect quick presets in UI:
+  - Screen Tear: `Subtle`, `Balanced`, `Heavy`, `Brutal`, `Custom`
+  - Zone Swap: `Subtle`, `Balanced`, `Heavy`, `Chaos`, `Custom`
 - Placeholder effect system with typed parameters for:
   - Temporal Hold
   - (other listed effects above are now real in export)

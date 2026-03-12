@@ -95,6 +95,9 @@ struct EffectsPanel: View {
             if effect.type == .screenTear {
                 screenTearPresetControl(effect: effect)
             }
+            if effect.type == .zoneSwap {
+                zoneSwapPresetControl(effect: effect)
+            }
         }
         .padding(10)
         .background(Color.secondary.opacity(0.08))
@@ -135,6 +138,48 @@ struct EffectsPanel: View {
                 )
             ) {
                 ForEach(ScreenTearPreset.allCases) { preset in
+                    Text(preset.rawValue).tag(preset)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+        }
+    }
+
+    private func zoneSwapPresetControl(effect: EffectState) -> some View {
+        let rate = parameterValue(effect: effect, id: "swap_rate", fallback: 0.5)
+        let pairCount = parameterValue(effect: effect, id: "pair_count", fallback: 4)
+        let activePreset = ZoneSwapPreset.matching(rate: rate, pairCount: pairCount)
+
+        return HStack(spacing: 8) {
+            Text("Swap Preset")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Picker(
+                "",
+                selection: Binding(
+                    get: { activePreset },
+                    set: { preset in
+                        guard preset != .custom else { return }
+                        commandProcessor.process(
+                            .setEffectParameter(
+                                effect: effect.type,
+                                parameterID: "swap_rate",
+                                value: preset.rate
+                            )
+                        )
+                        commandProcessor.process(
+                            .setEffectParameter(
+                                effect: effect.type,
+                                parameterID: "pair_count",
+                                value: preset.pairCount
+                            )
+                        )
+                    }
+                )
+            ) {
+                ForEach(ZoneSwapPreset.allCases) { preset in
                     Text(preset.rawValue).tag(preset)
                 }
             }
@@ -184,6 +229,46 @@ private enum ScreenTearPreset: String, CaseIterable, Identifiable {
         let presets = allCases.filter { $0 != .custom }
         if let exact = presets.first(where: {
             abs($0.intensity - intensity) < 0.03 && abs($0.lines - lines) < 0.6
+        }) {
+            return exact
+        }
+        return .custom
+    }
+}
+
+private enum ZoneSwapPreset: String, CaseIterable, Identifiable {
+    case subtle = "Subtle"
+    case balanced = "Balanced"
+    case heavy = "Heavy"
+    case chaos = "Chaos"
+    case custom = "Custom"
+
+    var id: String { rawValue }
+
+    var rate: Double {
+        switch self {
+        case .subtle: return 0.2
+        case .balanced: return 0.5
+        case .heavy: return 0.75
+        case .chaos: return 1.0
+        case .custom: return 0.5
+        }
+    }
+
+    var pairCount: Double {
+        switch self {
+        case .subtle: return 2
+        case .balanced: return 4
+        case .heavy: return 8
+        case .chaos: return 12
+        case .custom: return 4
+        }
+    }
+
+    static func matching(rate: Double, pairCount: Double) -> ZoneSwapPreset {
+        let presets = allCases.filter { $0 != .custom }
+        if let exact = presets.first(where: {
+            abs($0.rate - rate) < 0.03 && abs($0.pairCount - pairCount) < 0.6
         }) {
             return exact
         }

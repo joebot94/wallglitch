@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
 - Planned: add remaining real export effects (`Temporal Hold`).
 - Planned: add export profile options (quality/bitrate presets).
 
+## [v0.1.13] - 2026-03-11
+
+- Added `Zone Swap` presets in UI (`Subtle`, `Balanced`, `Heavy`, `Chaos`, `Custom`).
+- Presets set both swap controls together (`swap_rate`, `pair_count`) for quick tuning.
+
 ## [v0.1.12] - 2026-03-11
 
 - Added real `Zone Swap` export implementation with obvious tile-to-tile swaps.
