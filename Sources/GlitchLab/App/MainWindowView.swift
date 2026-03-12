@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -49,6 +50,14 @@ struct MainWindowView: View {
         HStack(spacing: 12) {
             Button("Open Video") {
                 isFileImporterPresented = true
+            }
+
+            Button("Load Project") {
+                openProjectPanel()
+            }
+
+            Button("Save Project") {
+                saveProjectPanel()
             }
 
             Picker(
@@ -140,14 +149,20 @@ struct MainWindowView: View {
             }
             .pickerStyle(.menu)
 
-            Button("Render") {
+            Button("Queue Render") {
                 commandProcessor.process(.render(outputURL: nil))
             }
-            .disabled(appState.renderState.isRunning)
+            .disabled(appState.videoURL == nil)
 
             if appState.renderState.isRunning {
                 Button("Cancel Render") {
                     commandProcessor.process(.cancelRender)
+                }
+            }
+
+            if appState.queuedRenderCount > 0 {
+                Button("Clear Queue") {
+                    commandProcessor.process(.clearRenderQueue)
                 }
             }
 
@@ -164,6 +179,11 @@ struct MainWindowView: View {
             }
             .frame(minWidth: 180, alignment: .leading)
 
+            Text("Queue: \(appState.queuedRenderCount)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 72, alignment: .leading)
+
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
@@ -172,9 +192,45 @@ struct MainWindowView: View {
                 Text("Preset: \(appState.activePresetName)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let projectURL = appState.projectURL {
+                    Text(projectURL.lastPathComponent)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
         }
         .padding(12)
         .background(.ultraThinMaterial)
+    }
+
+    private func openProjectPanel() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.glitchLabProject]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.title = "Load GlitchLab Project"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            commandProcessor.process(.loadProject(url: url))
+        }
+    }
+
+    private func saveProjectPanel() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.glitchLabProject]
+        panel.title = "Save GlitchLab Project"
+        panel.nameFieldStringValue = "\(appState.projectName).glitchlab"
+        panel.canCreateDirectories = true
+
+        if panel.runModal() == .OK, let url = panel.url {
+            commandProcessor.process(.saveProject(url: url))
+        }
+    }
+}
+
+private extension UTType {
+    static var glitchLabProject: UTType {
+        UTType(filenameExtension: "glitchlab") ?? .json
     }
 }

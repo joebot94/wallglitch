@@ -10,6 +10,8 @@ struct EffectsPanel: View {
                 Text("Effects")
                     .font(.headline)
 
+                compareControls
+
                 ForEach(EffectType.allCases) { effectType in
                     if let effect = appState.effectState(for: effectType) {
                         effectCard(effect)
@@ -20,12 +22,76 @@ struct EffectsPanel: View {
         }
     }
 
+    private var compareControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("A/B Compare")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Picker(
+                "A/B Compare",
+                selection: Binding(
+                    get: { appState.compareMode },
+                    set: { mode in
+                        commandProcessor.process(.setCompareMode(mode: mode))
+                    }
+                )
+            ) {
+                ForEach(PreviewCompareMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            HStack {
+                Text("Solo")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let soloEffect = appState.soloEffect {
+                    Text(soloEffect.displayName)
+                        .font(.caption)
+                    Button("Clear") {
+                        commandProcessor.process(.setSoloEffect(effect: nil))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                } else {
+                    Text("Off")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(10)
+        .background(Color.secondary.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
     private func effectCard(_ effect: EffectState) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(effect.name)
                     .font(.subheadline.weight(.semibold))
+
+                if appState.soloEffect == effect.type {
+                    Text("SOLO")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.2))
+                        .clipShape(Capsule())
+                }
+
                 Spacer()
+
+                Button(appState.soloEffect == effect.type ? "Unsolo" : "Solo") {
+                    let target: EffectType? = (appState.soloEffect == effect.type) ? nil : effect.type
+                    commandProcessor.process(.setSoloEffect(effect: target))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
                 Toggle(
                     "",
                     isOn: Binding(

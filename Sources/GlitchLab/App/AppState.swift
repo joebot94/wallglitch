@@ -6,11 +6,16 @@ final class AppState: ObservableObject {
     @Published var projectName: String = "GlitchLab Session"
     @Published var activePresetName: String = "Manual"
     @Published var activeEffectPackName: String = "Custom"
+    @Published var projectURL: URL?
     @Published var exportProfile: ExportProfile = .h264
+    @Published var compareMode: PreviewCompareMode = .effected
+    @Published var soloEffect: EffectType?
     @Published var videoURL: URL?
     @Published var videoInfo: VideoAssetInfo?
     @Published var timeline: TimelineState = TimelineState()
     @Published var renderState: RenderState = RenderState()
+    @Published var renderQueue: [RenderQueueItem] = []
+    @Published var activeRenderJob: RenderQueueItem?
     @Published var gridConfiguration: GridConfiguration = .default
     @Published var zoneSelection: ZoneSelectionModel = ZoneSelectionModel()
     @Published var activeZonePreset: ZoneSelectionPreset = .custom
@@ -23,8 +28,32 @@ final class AppState: ObservableObject {
         zoneSelection.selectedZoneIDs.count
     }
 
+    var queuedRenderCount: Int {
+        renderQueue.count
+    }
+
     var gridPreset: GridPreset? {
         GridPreset.matching(rows: gridConfiguration.rows, cols: gridConfiguration.cols)
+    }
+
+    var effectiveEffectsBypassed: Bool {
+        compareMode == .original
+    }
+
+    var effectiveEffects: [EffectState] {
+        if effectiveEffectsBypassed {
+            return effects
+        }
+        guard let soloEffect else {
+            return effects
+        }
+        return effects.map { effect in
+            var copy = effect
+            if copy.type != soloEffect {
+                copy.isEnabled = false
+            }
+            return copy
+        }
     }
 
     func appendLog(_ message: String) {

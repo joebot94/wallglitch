@@ -8,6 +8,22 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.17] - 2026-03-11
+
+- Added command-driven project persistence:
+  - `save_project`
+  - `load_project`
+  - `.glitchlab` JSON project format
+- Added project save/load controls in toolbar.
+- Added render queue system:
+  - each render request is queued and auto-runs sequentially
+  - queue inspection/removal in inspector
+  - queue clear controls (`clear_render_queue`, `remove_render_queue_item`)
+- Added A/B compare mode and solo effect controls:
+  - `A: Original` bypasses all effects for queued renders
+  - `B: FX` uses active effect stack
+  - per-effect solo isolation via `set_solo_effect`
+
 ## [v0.1.16] - 2026-03-11
 
 - Added command-driven export profile selection:

@@ -20,8 +20,9 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
   - frame stepping (`step_frame`)
   - preview scrubber with start/end and frame nudge controls
 - Offline render job runner:
-  - command-driven start/cancel (`render`, `cancel_render`)
+  - command-driven queue/start/cancel (`render`, `cancel_render`, `clear_render_queue`, `remove_render_queue_item`)
   - in-app progress/status
+  - pending queue list with per-item remove and queue clear controls
   - export profile selection (`H.264`, `HEVC`, `ProRes 422`, `ProRes 422 HQ`)
   - source audio passthrough in export
   - output writes to `~/Documents/GlitchLabRenders` when output path is not supplied
@@ -42,6 +43,12 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
   - `Swap Storm`
   - `Pixel Jolt`
   - `Soft Corrupt`
+- Project persistence:
+  - save/load `.glitchlab` project files
+  - restores grid, zone selection, effects, compare/solo state, export profile, and video path (if still present)
+- A/B + effect isolation controls:
+  - compare mode (`A: Original`, `B: FX`) applied to render jobs
+  - per-effect `Solo` mode to isolate one effect in the render chain
 - Placeholder effect system with typed parameters for:
   - Temporal Hold
   - (other listed effects above are now real in export)

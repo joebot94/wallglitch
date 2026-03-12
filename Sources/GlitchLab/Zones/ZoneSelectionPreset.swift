@@ -1,6 +1,6 @@
 import Foundation
 
-enum ZoneSelectionPreset: String, CaseIterable, Identifiable {
+enum ZoneSelectionPreset: String, CaseIterable, Identifiable, Codable {
     case all = "All"
     case threeByThree = "3x3"
     case centerTwoByTwo = "2x2 Center"

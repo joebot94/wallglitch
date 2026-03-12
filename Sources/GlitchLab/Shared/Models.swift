@@ -44,7 +44,21 @@ enum ExportProfile: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-struct GridConfiguration: Equatable {
+enum PreviewCompareMode: String, CaseIterable, Identifiable, Codable {
+    case original = "A: Original"
+    case effected = "B: FX"
+
+    var id: String { rawValue }
+
+    var commandName: String {
+        switch self {
+        case .original: return "original"
+        case .effected: return "fx"
+        }
+    }
+}
+
+struct GridConfiguration: Equatable, Codable {
     var rows: Int
     var cols: Int
 
@@ -129,6 +143,21 @@ struct RenderState: Equatable {
     }
 }
 
+struct RenderQueueItem: Identifiable, Equatable {
+    let id: UUID
+    let enqueuedAt: Date
+    let sourceURL: URL
+    let outputURL: URL?
+    let exportProfile: ExportProfile
+    let effects: [EffectState]
+    let grid: GridConfiguration
+    let selectedZoneIDs: Set<Int>
+    let compareMode: PreviewCompareMode
+    let soloEffect: EffectType?
+
+    var sourceName: String { sourceURL.lastPathComponent }
+}
+
 struct CommandLogEntry: Identifiable, Equatable {
     let id = UUID()
     let timestamp: Date
@@ -211,6 +240,8 @@ struct EffectState: Identifiable, Equatable, Codable {
 
 enum AppCommand {
     case loadVideo(url: URL)
+    case saveProject(url: URL)
+    case loadProject(url: URL)
     case setGrid(rows: Int, cols: Int)
     case toggleZone(id: Int)
     case enableZone(id: Int)
@@ -224,10 +255,14 @@ enum AppCommand {
     case setEffectEnabled(effect: EffectType, enabled: Bool)
     case setEffectParameter(effect: EffectType, parameterID: String, value: Double)
     case setEffectTargetSelectedOnly(effect: EffectType, selectedOnly: Bool)
+    case setCompareMode(mode: PreviewCompareMode)
+    case setSoloEffect(effect: EffectType?)
     case applyEffectPack(name: String)
     case applyPreset(name: String)
     case render(outputURL: URL?)
     case cancelRender
+    case clearRenderQueue
+    case removeRenderQueueItem(id: UUID)
 }
 
 extension AppCommand {
@@ -235,6 +270,10 @@ extension AppCommand {
         switch self {
         case .loadVideo(let url):
             return "[CMD] load_video name=\(url.lastPathComponent)"
+        case .saveProject(let url):
+            return "[CMD] save_project file=\(url.lastPathComponent)"
+        case .loadProject(let url):
+            return "[CMD] load_project file=\(url.lastPathComponent)"
         case .setGrid(let rows, let cols):
             return "[CMD] set_grid rows=\(rows) cols=\(cols)"
         case .toggleZone(let id):
@@ -261,6 +300,13 @@ extension AppCommand {
             return "[CMD] set_effect_parameter effect=\(effect.commandName) parameter=\(parameterID) value=\(value)"
         case .setEffectTargetSelectedOnly(let effect, let selectedOnly):
             return "[CMD] set_effect_target effect=\(effect.commandName) selected_only=\(selectedOnly)"
+        case .setCompareMode(let mode):
+            return "[CMD] set_compare_mode mode=\(mode.commandName)"
+        case .setSoloEffect(let effect):
+            if let effect {
+                return "[CMD] set_solo_effect effect=\(effect.commandName)"
+            }
+            return "[CMD] clear_solo_effect"
         case .applyEffectPack(let name):
             return "[CMD] apply_effect_pack name=\(name)"
         case .applyPreset(let name):
@@ -272,6 +318,10 @@ extension AppCommand {
             return "[CMD] render output=auto"
         case .cancelRender:
             return "[CMD] cancel_render"
+        case .clearRenderQueue:
+            return "[CMD] clear_render_queue"
+        case .removeRenderQueueItem(let id):
+            return "[CMD] remove_render_queue_item id=\(id.uuidString)"
         }
     }
 }

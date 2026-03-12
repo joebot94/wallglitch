@@ -20,7 +20,7 @@ struct PreviewPane: View {
                 let aspectRatio = appState.videoInfo?.aspectRatio ?? (16.0 / 9.0)
                 let canvasSize = fittedSize(in: geometry.size, aspectRatio: aspectRatio)
 
-                ZStack {
+                ZStack(alignment: .topLeading) {
                     previewLayer
                         .frame(width: canvasSize.width, height: canvasSize.height)
                         .background(Color.black.opacity(0.95))
@@ -38,6 +38,9 @@ struct PreviewPane: View {
                     }
                     .frame(width: canvasSize.width, height: canvasSize.height)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    previewModeBadge
+                        .padding(10)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -56,6 +59,21 @@ struct PreviewPane: View {
         .onChange(of: appState.timeline.currentTimeSeconds) { newValue in
             seekPlayer(to: newValue)
         }
+    }
+
+    private var previewModeBadge: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(appState.compareMode.rawValue)
+                .font(.caption2.weight(.semibold))
+            if let soloEffect = appState.soloEffect {
+                Text("Solo: \(soloEffect.displayName)")
+                    .font(.caption2)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     @ViewBuilder

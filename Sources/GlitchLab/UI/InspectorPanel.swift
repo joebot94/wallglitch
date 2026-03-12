@@ -2,6 +2,7 @@ import SwiftUI
 
 struct InspectorPanel: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var commandProcessor: CommandProcessor
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -55,7 +56,7 @@ struct InspectorPanel: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .frame(minHeight: 120)
+            .frame(minHeight: 100)
             .padding(8)
             .background(Color.secondary.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -65,9 +66,48 @@ struct InspectorPanel: View {
             Text("Render")
                 .font(.headline)
             LabeledContent("Profile", value: appState.exportProfile.rawValue)
+            LabeledContent("Compare", value: appState.compareMode.rawValue)
+            LabeledContent("Solo", value: appState.soloEffect?.displayName ?? "Off")
             LabeledContent("Status", value: appState.renderState.statusText)
+            if let activeRenderJob = appState.activeRenderJob {
+                LabeledContent("Now Rendering", value: activeRenderJob.sourceName)
+                    .lineLimit(2)
+            }
             if appState.renderState.isRunning {
                 ProgressView(value: appState.renderState.progress)
+            }
+
+            if !appState.renderQueue.isEmpty {
+                Text("Queue")
+                    .font(.subheadline.weight(.semibold))
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(appState.renderQueue) { item in
+                            HStack(alignment: .top, spacing: 6) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.sourceName)
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                    Text(item.exportProfile.rawValue)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 4)
+                                Button {
+                                    commandProcessor.process(.removeRenderQueueItem(id: item.id))
+                                } label: {
+                                    Image(systemName: "xmark.circle")
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(6)
+                            .background(Color.secondary.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                    }
+                }
+                .frame(minHeight: 70, maxHeight: 150)
             }
 
             Spacer(minLength: 0)
