@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.30] - 2026-03-12
+
+- Replaced native-toolbar grid `Picker` with a labeled `Menu` so custom grid sizes always display a visible title.
+- Toolbar now shows `Grid <size>` for both preset and custom row/column combinations instead of blank custom-state text.
+
 ## [v0.1.29] - 2026-03-12
 
 - Moved primary controls out of the SwiftUI content stack into the native macOS window toolbar.

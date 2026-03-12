@@ -58,22 +58,17 @@ struct MainWindowView: View {
         }
 
         ToolbarItemGroup(placement: .automatic) {
-            Picker(
-                "Grid",
-                selection: Binding(
-                    get: { appState.gridPreset?.rawValue ?? "Custom" },
-                    set: { selected in
-                        guard let preset = GridPreset(rawValue: selected) else { return }
+            Menu(gridToolbarTitle) {
+                ForEach(GridPreset.allCases) { preset in
+                    Button(preset.rawValue) {
                         commandProcessor.process(.setGrid(rows: preset.rows, cols: preset.cols))
                     }
-                )
-            ) {
-                ForEach(GridPreset.allCases) { preset in
-                    Text(preset.rawValue).tag(preset.rawValue)
                 }
-                Text("Custom").tag("Custom")
+
+                Divider()
+
+                Text("Custom: \(appState.gridConfiguration.label)")
             }
-            .frame(width: 88)
 
             Stepper(
                 "Rows \(appState.gridConfiguration.rows)",
@@ -205,6 +200,13 @@ struct MainWindowView: View {
         if panel.runModal() == .OK, let url = panel.url {
             commandProcessor.process(.saveProject(url: url))
         }
+    }
+
+    private var gridToolbarTitle: String {
+        if let preset = appState.gridPreset {
+            return "Grid \(preset.rawValue)"
+        }
+        return "Grid \(appState.gridConfiguration.label)"
     }
 }
 
