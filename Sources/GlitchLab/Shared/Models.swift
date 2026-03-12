@@ -294,7 +294,8 @@ enum AppCommand {
     case setEffectParameter(effect: EffectType, parameterID: String, value: Double)
     case setEffectTargetSelectedOnly(effect: EffectType, selectedOnly: Bool)
     case setAutomationEnabled(Bool)
-    case toggleAutomationKeyframe(effect: EffectType, parameterID: String, timeSeconds: Double, value: Double)
+    case setAutomationKeyframe(effect: EffectType, parameterID: String, timeSeconds: Double, value: Double)
+    case removeAutomationKeyframe(effect: EffectType, parameterID: String, timeSeconds: Double)
     case setAutomationLaneEnabled(effect: EffectType, parameterID: String, enabled: Bool)
     case setAutomationInterpolation(effect: EffectType, parameterID: String, mode: AutomationInterpolation)
     case clearAutomationLane(effect: EffectType, parameterID: String)
@@ -346,13 +347,20 @@ extension AppCommand {
             return "[CMD] set_effect_target effect=\(effect.commandName) selected_only=\(selectedOnly)"
         case .setAutomationEnabled(let enabled):
             return "[CMD] set_automation_enabled enabled=\(enabled)"
-        case .toggleAutomationKeyframe(let effect, let parameterID, let timeSeconds, let value):
+        case .setAutomationKeyframe(let effect, let parameterID, let timeSeconds, let value):
             return String(
-                format: "[CMD] toggle_keyframe effect=%@ parameter=%@ time=%.3f value=%.4f",
+                format: "[CMD] set_keyframe effect=%@ parameter=%@ time=%.3f value=%.4f",
                 effect.commandName,
                 parameterID,
                 timeSeconds,
                 value
+            )
+        case .removeAutomationKeyframe(let effect, let parameterID, let timeSeconds):
+            return String(
+                format: "[CMD] remove_keyframe effect=%@ parameter=%@ time=%.3f",
+                effect.commandName,
+                parameterID,
+                timeSeconds
             )
         case .setAutomationLaneEnabled(let effect, let parameterID, let enabled):
             return "[CMD] set_lane_enabled effect=\(effect.commandName) parameter=\(parameterID) enabled=\(enabled)"

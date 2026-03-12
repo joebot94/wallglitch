@@ -8,6 +8,18 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.31] - 2026-03-12
+
+- Improved automation/keyframe UX to prevent accidental key deletion:
+  - replaced toggle-style key action with explicit `Set Key` + `Del` controls
+  - `Set Key` now updates the keyframe at the current playhead when one already exists
+  - added explicit `remove_keyframe` command path
+- Added clearer automation guidance in the effects panel:
+  - clarified automation is render-queue behavior in this milestone
+  - added testing hint for `B: FX`, enabled effect state, and two-key animation expectation
+  - warning shown when an effect has automation lanes but the effect is disabled
+- Added clearer lane status labels (`No keys`, `Static 1`, `Anim N`, `Muted N`) so animation state is easier to verify.
+
 ## [v0.1.30] - 2026-03-12
 
 - Replaced native-toolbar grid `Picker` with a labeled `Menu` so custom grid sizes always display a visible title.

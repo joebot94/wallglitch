@@ -43,7 +43,11 @@ struct EffectsPanel: View {
             }
             .pickerStyle(.segmented)
 
-            Text("A/B applies to queued renders in this build (live effected preview is a later realtime milestone).")
+            Text("A/B and automation apply to queued renders in this build. Live effected preview is a later realtime milestone.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            Text("For automation tests: keep A/B on B: FX, enable the effect itself, and use at least two keys on a lane if you want motion over time.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -102,7 +106,10 @@ struct EffectsPanel: View {
     }
 
     private func effectCard(_ effect: EffectState) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let effectLanes = appState.automationLanes.filter { $0.effect == effect.type }
+        let hasAutomation = !effectLanes.isEmpty
+
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(effect.name)
                     .font(.subheadline.weight(.semibold))
@@ -150,6 +157,12 @@ struct EffectsPanel: View {
                 )
             )
             .font(.caption)
+
+            if hasAutomation && !effect.isEnabled {
+                Text("Automation exists for this effect, but it is OFF. Enable it before testing queued renders.")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
 
             ForEach(effect.parameters) { parameter in
                 let value = appState.effectState(for: effect.type)?
@@ -313,9 +326,9 @@ struct EffectsPanel: View {
         let hasKeyframe = laneHasKeyframeAtPlayhead(lane)
 
         return HStack(spacing: 8) {
-            Button(hasKeyframe ? "Del Key" : "Add Key") {
+            Button("Set Key") {
                 commandProcessor.process(
-                    .toggleAutomationKeyframe(
+                    .setAutomationKeyframe(
                         effect: effect.type,
                         parameterID: parameter.id,
                         timeSeconds: appState.timeline.currentTimeSeconds,
@@ -325,6 +338,19 @@ struct EffectsPanel: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.mini)
+
+            Button("Del") {
+                commandProcessor.process(
+                    .removeAutomationKeyframe(
+                        effect: effect.type,
+                        parameterID: parameter.id,
+                        timeSeconds: appState.timeline.currentTimeSeconds
+                    )
+                )
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.mini)
+            .disabled(!hasKeyframe)
 
             Toggle(
                 "Lane",
@@ -369,7 +395,7 @@ struct EffectsPanel: View {
 
             Spacer()
 
-            Text("KF \(lane?.keyframes.count ?? 0)")
+            Text(keyframeStatusText(for: lane))
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
@@ -380,6 +406,22 @@ struct EffectsPanel: View {
         let playhead = appState.timeline.currentTimeSeconds
         let epsilon = max(0.0005, appState.timeline.frameDuration * 0.45)
         return lane.keyframes.contains { abs($0.timeSeconds - playhead) <= epsilon }
+    }
+
+    private func keyframeStatusText(for lane: ParameterAutomationLane?) -> String {
+        guard let lane else { return "No keys" }
+        let count = lane.keyframes.count
+
+        if !lane.isEnabled {
+            return "Muted \(count)"
+        }
+        if count == 0 {
+            return "No keys"
+        }
+        if count == 1 {
+            return "Static 1"
+        }
+        return "Anim \(count)"
     }
 }
 

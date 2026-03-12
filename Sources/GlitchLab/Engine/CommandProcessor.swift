@@ -83,12 +83,18 @@ final class CommandProcessor: ObservableObject {
             appState.activeEffectPackName = "Custom"
         case .setAutomationEnabled(let enabled):
             appState.automationEnabled = enabled
-        case .toggleAutomationKeyframe(let effect, let parameterID, let timeSeconds, let value):
-            toggleAutomationKeyframe(
+        case .setAutomationKeyframe(let effect, let parameterID, let timeSeconds, let value):
+            setAutomationKeyframe(
                 effect: effect,
                 parameterID: parameterID,
                 timeSeconds: timeSeconds,
                 value: value
+            )
+        case .removeAutomationKeyframe(let effect, let parameterID, let timeSeconds):
+            removeAutomationKeyframe(
+                effect: effect,
+                parameterID: parameterID,
+                timeSeconds: timeSeconds
             )
         case .setAutomationLaneEnabled(let effect, let parameterID, let enabled):
             setAutomationLaneEnabled(effect: effect, parameterID: parameterID, enabled: enabled)
@@ -462,7 +468,7 @@ final class CommandProcessor: ObservableObject {
         appState.appendLog("[SYS] render_cancel_requested")
     }
 
-    private func toggleAutomationKeyframe(
+    private func setAutomationKeyframe(
         effect: EffectType,
         parameterID: String,
         timeSeconds: Double,
@@ -499,10 +505,7 @@ final class CommandProcessor: ObservableObject {
         if let existingKeyframeIndex = lanes[laneIndex].keyframes.firstIndex(where: {
             abs($0.timeSeconds - clampedTime) <= epsilon
         }) {
-            lanes[laneIndex].keyframes.remove(at: existingKeyframeIndex)
-            if lanes[laneIndex].keyframes.isEmpty {
-                lanes.remove(at: laneIndex)
-            }
+            lanes[laneIndex].keyframes[existingKeyframeIndex].value = clampedValue
         } else {
             lanes[laneIndex].keyframes.append(
                 ParameterKeyframe(timeSeconds: clampedTime, value: clampedValue)
@@ -510,6 +513,28 @@ final class CommandProcessor: ObservableObject {
             lanes[laneIndex].keyframes.sort { $0.timeSeconds < $1.timeSeconds }
         }
 
+        appState.automationLanes = lanes
+    }
+
+    private func removeAutomationKeyframe(
+        effect: EffectType,
+        parameterID: String,
+        timeSeconds: Double
+    ) {
+        let maxDuration = max(appState.timeline.durationSeconds, 0)
+        let clampedTime = min(max(timeSeconds, 0), maxDuration > 0 ? maxDuration : timeSeconds)
+        let epsilon = max(keyframeTimeEpsilon, appState.timeline.frameDuration * 0.45)
+        let laneID = laneIdentifier(effect: effect, parameterID: parameterID)
+
+        guard let laneIndex = appState.automationLanes.firstIndex(where: { $0.id == laneID }) else {
+            return
+        }
+
+        var lanes = appState.automationLanes
+        lanes[laneIndex].keyframes.removeAll { abs($0.timeSeconds - clampedTime) <= epsilon }
+        if lanes[laneIndex].keyframes.isEmpty {
+            lanes.remove(at: laneIndex)
+        }
         appState.automationLanes = lanes
     }
 
