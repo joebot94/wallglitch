@@ -162,10 +162,11 @@ actor OfflineVideoRenderer {
                 zoneMaskImage: zoneMaskImage
             )
 
-            while !videoWriterInput.isReadyForMoreMediaData {
-                try Task.checkCancellation()
-                try await Task.sleep(nanoseconds: 1_000_000)
-            }
+            try await waitUntilReadyForMoreMediaData(
+                input: videoWriterInput,
+                writer: writer,
+                reader: reader
+            )
 
             guard
                 let pool = adaptor.pixelBufferPool,
@@ -195,10 +196,11 @@ actor OfflineVideoRenderer {
             while true {
                 try Task.checkCancellation()
 
-                if !audioWriterInput.isReadyForMoreMediaData {
-                    try await Task.sleep(nanoseconds: 1_000_000)
-                    continue
-                }
+                try await waitUntilReadyForMoreMediaData(
+                    input: audioWriterInput,
+                    writer: writer,
+                    reader: reader
+                )
 
                 guard let audioSampleBuffer = audioReaderOutput.copyNextSampleBuffer() else {
                     break
@@ -372,7 +374,7 @@ actor OfflineVideoRenderer {
         if intensity <= 0 { return image }
 
         let lineCount = max(parameterValue(in: effect, id: "line_count", defaultValue: 8), 1)
-        let blurRadius = max(3, image.extent.width / lineCount)
+        let pixelScale = max(2, image.extent.height / lineCount)
 
         let displacementMap = CIFilter(name: "CIRandomGenerator")?.outputImage?
             .cropped(to: image.extent)
@@ -380,16 +382,17 @@ actor OfflineVideoRenderer {
                 "CIColorControls",
                 parameters: [
                     kCIInputSaturationKey: 0,
-                    kCIInputContrastKey: 1 + (intensity * 3)
+                    kCIInputContrastKey: 1 + (intensity * 2.2)
                 ]
             )
             .applyingFilter(
-                "CIMotionBlur",
+                "CIPixellate",
                 parameters: [
-                    kCIInputRadiusKey: blurRadius,
-                    kCIInputAngleKey: 0
+                    kCIInputScaleKey: pixelScale,
+                    kCIInputCenterKey: CIVector(x: image.extent.midX, y: image.extent.midY)
                 ]
             )
+            .cropped(to: image.extent)
 
         guard let displacementMap else { return image }
 
@@ -397,7 +400,7 @@ actor OfflineVideoRenderer {
             "CIDisplacementDistortion",
             parameters: [
                 "inputDisplacementImage": displacementMap,
-                kCIInputScaleKey: intensity * 80
+                kCIInputScaleKey: intensity * 36
             ]
         )
     }
@@ -511,6 +514,32 @@ actor OfflineVideoRenderer {
         var pixelBuffer: CVPixelBuffer?
         CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
         return pixelBuffer
+    }
+
+    private func waitUntilReadyForMoreMediaData(
+        input: AVAssetWriterInput,
+        writer: AVAssetWriter,
+        reader: AVAssetReader
+    ) async throws {
+        while !input.isReadyForMoreMediaData {
+            try Task.checkCancellation()
+
+            if writer.status == .failed {
+                throw OfflineVideoRendererError.writerFailed(
+                    writer.error?.localizedDescription ?? "Writer failed while waiting for input readiness."
+                )
+            }
+            if writer.status == .cancelled {
+                throw OfflineVideoRendererError.cancelled
+            }
+            if reader.status == .failed {
+                throw OfflineVideoRendererError.readerFailed(
+                    reader.error?.localizedDescription ?? "Reader failed while waiting for writer readiness."
+                )
+            }
+
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
     }
 
     private func finishWriting(writer: AVAssetWriter) async throws {

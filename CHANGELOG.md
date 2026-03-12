@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 - Planned: add remaining real export effects (`Zone Swap`, `Block Scramble`, `Temporal Hold`).
 - Planned: add export profile options (quality/bitrate presets).
 
+## [v0.1.9] - 2026-03-11
+
+- Fixed a render hang condition where writer readiness waits could stall indefinitely.
+- Added failure-aware writer/reader readiness checks so render jobs fail fast instead of freezing.
+- Optimized `Screen Tear` export effect for 4K stability and improved throughput.
+
 ## [v0.1.8] - 2026-03-11
 
 - Added audio passthrough in offline exports.
