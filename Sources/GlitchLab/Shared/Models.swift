@@ -154,6 +154,8 @@ struct RenderQueueItem: Identifiable, Equatable {
     let selectedZoneIDs: Set<Int>
     let compareMode: PreviewCompareMode
     let soloEffect: EffectType?
+    let automationEnabled: Bool
+    let automationLanes: [ParameterAutomationLane]
 
     var sourceName: String { sourceURL.lastPathComponent }
 }
@@ -238,6 +240,42 @@ struct EffectState: Identifiable, Equatable, Codable {
     var name: String { type.displayName }
 }
 
+enum AutomationInterpolation: String, CaseIterable, Identifiable, Codable {
+    case hold = "Hold"
+    case linear = "Linear"
+
+    var id: String { rawValue }
+
+    var commandName: String {
+        switch self {
+        case .hold: return "hold"
+        case .linear: return "linear"
+        }
+    }
+}
+
+struct ParameterKeyframe: Identifiable, Equatable, Codable {
+    let id: UUID
+    var timeSeconds: Double
+    var value: Double
+
+    init(id: UUID = UUID(), timeSeconds: Double, value: Double) {
+        self.id = id
+        self.timeSeconds = timeSeconds
+        self.value = value
+    }
+}
+
+struct ParameterAutomationLane: Identifiable, Equatable, Codable {
+    let effect: EffectType
+    let parameterID: String
+    var isEnabled: Bool
+    var interpolation: AutomationInterpolation
+    var keyframes: [ParameterKeyframe]
+
+    var id: String { "\(effect.rawValue)::\(parameterID)" }
+}
+
 enum AppCommand {
     case loadVideo(url: URL)
     case saveProject(url: URL)
@@ -255,6 +293,12 @@ enum AppCommand {
     case setEffectEnabled(effect: EffectType, enabled: Bool)
     case setEffectParameter(effect: EffectType, parameterID: String, value: Double)
     case setEffectTargetSelectedOnly(effect: EffectType, selectedOnly: Bool)
+    case setAutomationEnabled(Bool)
+    case toggleAutomationKeyframe(effect: EffectType, parameterID: String, timeSeconds: Double, value: Double)
+    case setAutomationLaneEnabled(effect: EffectType, parameterID: String, enabled: Bool)
+    case setAutomationInterpolation(effect: EffectType, parameterID: String, mode: AutomationInterpolation)
+    case clearAutomationLane(effect: EffectType, parameterID: String)
+    case clearAllAutomation
     case setCompareMode(mode: PreviewCompareMode)
     case setSoloEffect(effect: EffectType?)
     case applyEffectPack(name: String)
@@ -300,6 +344,24 @@ extension AppCommand {
             return "[CMD] set_effect_parameter effect=\(effect.commandName) parameter=\(parameterID) value=\(value)"
         case .setEffectTargetSelectedOnly(let effect, let selectedOnly):
             return "[CMD] set_effect_target effect=\(effect.commandName) selected_only=\(selectedOnly)"
+        case .setAutomationEnabled(let enabled):
+            return "[CMD] set_automation_enabled enabled=\(enabled)"
+        case .toggleAutomationKeyframe(let effect, let parameterID, let timeSeconds, let value):
+            return String(
+                format: "[CMD] toggle_keyframe effect=%@ parameter=%@ time=%.3f value=%.4f",
+                effect.commandName,
+                parameterID,
+                timeSeconds,
+                value
+            )
+        case .setAutomationLaneEnabled(let effect, let parameterID, let enabled):
+            return "[CMD] set_lane_enabled effect=\(effect.commandName) parameter=\(parameterID) enabled=\(enabled)"
+        case .setAutomationInterpolation(let effect, let parameterID, let mode):
+            return "[CMD] set_lane_mode effect=\(effect.commandName) parameter=\(parameterID) mode=\(mode.commandName)"
+        case .clearAutomationLane(let effect, let parameterID):
+            return "[CMD] clear_lane effect=\(effect.commandName) parameter=\(parameterID)"
+        case .clearAllAutomation:
+            return "[CMD] clear_all_automation"
         case .setCompareMode(let mode):
             return "[CMD] set_compare_mode mode=\(mode.commandName)"
         case .setSoloEffect(let effect):

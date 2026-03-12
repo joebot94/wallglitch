@@ -62,6 +62,35 @@ struct EffectsPanel: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            Divider()
+
+            HStack {
+                Toggle(
+                    "Automation",
+                    isOn: Binding(
+                        get: { appState.automationEnabled },
+                        set: { enabled in
+                            commandProcessor.process(.setAutomationEnabled(enabled))
+                        }
+                    )
+                )
+                .font(.caption)
+
+                Spacer()
+
+                Text("Keyframes \(appState.totalAutomationKeyframeCount)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                if appState.totalAutomationKeyframeCount > 0 {
+                    Button("Clear") {
+                        commandProcessor.process(.clearAllAutomation)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
         }
         .padding(10)
         .background(Color.secondary.opacity(0.08))
@@ -155,6 +184,8 @@ struct EffectsPanel: View {
                         in: parameter.minimum...parameter.maximum,
                         step: parameter.step
                     )
+
+                    automationRow(effect: effect, parameter: parameter, currentValue: value)
                 }
             }
 
@@ -267,6 +298,84 @@ struct EffectsPanel: View {
             .parameters
             .first(where: { $0.id == id })?
             .value ?? fallback
+    }
+
+    private func automationRow(
+        effect: EffectState,
+        parameter: EffectParameter,
+        currentValue: Double
+    ) -> some View {
+        let lane = appState.automationLane(effect: effect.type, parameterID: parameter.id)
+        let hasKeyframe = laneHasKeyframeAtPlayhead(lane)
+
+        return HStack(spacing: 8) {
+            Button(hasKeyframe ? "Del Key" : "Add Key") {
+                commandProcessor.process(
+                    .toggleAutomationKeyframe(
+                        effect: effect.type,
+                        parameterID: parameter.id,
+                        timeSeconds: appState.timeline.currentTimeSeconds,
+                        value: currentValue
+                    )
+                )
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.mini)
+
+            Toggle(
+                "Lane",
+                isOn: Binding(
+                    get: { lane?.isEnabled ?? false },
+                    set: { enabled in
+                        commandProcessor.process(
+                            .setAutomationLaneEnabled(
+                                effect: effect.type,
+                                parameterID: parameter.id,
+                                enabled: enabled
+                            )
+                        )
+                    }
+                )
+            )
+            .toggleStyle(.checkbox)
+            .font(.caption2)
+
+            Picker(
+                "",
+                selection: Binding(
+                    get: { lane?.interpolation ?? .linear },
+                    set: { mode in
+                        commandProcessor.process(
+                            .setAutomationInterpolation(
+                                effect: effect.type,
+                                parameterID: parameter.id,
+                                mode: mode
+                            )
+                        )
+                    }
+                )
+            ) {
+                ForEach(AutomationInterpolation.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .disabled(lane == nil)
+
+            Spacer()
+
+            Text("KF \(lane?.keyframes.count ?? 0)")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func laneHasKeyframeAtPlayhead(_ lane: ParameterAutomationLane?) -> Bool {
+        guard let lane else { return false }
+        let playhead = appState.timeline.currentTimeSeconds
+        let epsilon = max(0.0005, appState.timeline.frameDuration * 0.45)
+        return lane.keyframes.contains { abs($0.timeSeconds - playhead) <= epsilon }
     }
 }
 

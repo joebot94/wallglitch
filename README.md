@@ -49,6 +49,12 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
 - A/B + effect isolation controls:
   - compare mode (`A: Original`, `B: FX`) applied to render jobs
   - per-effect `Solo` mode to isolate one effect in the render chain
+- Automation/keyframes:
+  - per-parameter keyframes at playhead (`Add Key` / `Del Key`)
+  - lane controls per parameter (`enabled`, interpolation: `Hold` / `Linear`)
+  - global automation enable toggle and clear-all action
+  - keyframes are serialized in `.glitchlab` project files
+  - render queue jobs snapshot automation state so jobs stay deterministic
 - Placeholder effect system with typed parameters for:
   - Temporal Hold
   - (other listed effects above are now real in export)

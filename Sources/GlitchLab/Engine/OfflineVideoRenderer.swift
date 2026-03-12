@@ -10,6 +10,8 @@ struct RenderRequest {
     let effects: [EffectState]
     let grid: GridConfiguration
     let selectedZoneIDs: Set<Int>
+    let automationEnabled: Bool
+    let automationLanes: [ParameterAutomationLane]
 }
 
 enum OfflineVideoRendererError: LocalizedError {
@@ -145,6 +147,9 @@ actor OfflineVideoRenderer {
             grid: request.grid,
             selectedZoneIDs: request.selectedZoneIDs
         )
+        let automationEvaluator = AutomationEvaluator(
+            lanes: request.automationEnabled ? request.automationLanes : []
+        )
         var audioFinished = (audioReaderOutput == nil || audioWriterInput == nil)
 
         while reader.status == .reading {
@@ -165,7 +170,8 @@ actor OfflineVideoRenderer {
                 to: inputImage,
                 request: request,
                 zoneMaskImage: zoneMaskImage,
-                frameTimeSeconds: frameTimeSeconds.isFinite ? frameTimeSeconds : 0
+                frameTimeSeconds: frameTimeSeconds.isFinite ? frameTimeSeconds : 0,
+                automationEvaluator: automationEvaluator
             )
 
             try await waitUntilReadyForMoreMediaData(
@@ -252,51 +258,54 @@ actor OfflineVideoRenderer {
         to image: CIImage,
         request: RenderRequest,
         zoneMaskImage: CIImage?,
-        frameTimeSeconds: Double
+        frameTimeSeconds: Double,
+        automationEvaluator: AutomationEvaluator
     ) -> CIImage {
         var currentImage = image
         for effect in request.effects where effect.isEnabled {
-            switch effect.type {
+            let animatedEffect = automationEvaluator.resolvedEffect(effect: effect, at: frameTimeSeconds)
+
+            switch animatedEffect.type {
             case .rgbShift:
                 currentImage = applyMaskedEffect(
                     baseImage: currentImage,
-                    effect: effect,
+                    effect: animatedEffect,
                     selectedZoneIDs: request.selectedZoneIDs,
                     zoneMaskImage: zoneMaskImage
                 ) { baseImage in
-                    applyRGBShift(to: baseImage, effect: effect)
+                    applyRGBShift(to: baseImage, effect: animatedEffect)
                 }
             case .screenTear:
                 currentImage = applyMaskedEffect(
                     baseImage: currentImage,
-                    effect: effect,
+                    effect: animatedEffect,
                     selectedZoneIDs: request.selectedZoneIDs,
                     zoneMaskImage: zoneMaskImage
                 ) { baseImage in
-                    applyScreenTear(to: baseImage, effect: effect)
+                    applyScreenTear(to: baseImage, effect: animatedEffect)
                 }
             case .pixelDrift:
                 currentImage = applyMaskedEffect(
                     baseImage: currentImage,
-                    effect: effect,
+                    effect: animatedEffect,
                     selectedZoneIDs: request.selectedZoneIDs,
                     zoneMaskImage: zoneMaskImage
                 ) { baseImage in
-                    applyPixelDrift(to: baseImage, effect: effect)
+                    applyPixelDrift(to: baseImage, effect: animatedEffect)
                 }
             case .blockScramble:
                 currentImage = applyMaskedEffect(
                     baseImage: currentImage,
-                    effect: effect,
+                    effect: animatedEffect,
                     selectedZoneIDs: request.selectedZoneIDs,
                     zoneMaskImage: zoneMaskImage
                 ) { baseImage in
-                    applyBlockScramble(to: baseImage, effect: effect)
+                    applyBlockScramble(to: baseImage, effect: animatedEffect)
                 }
             case .zoneSwap:
                 currentImage = applyZoneSwap(
                     to: currentImage,
-                    effect: effect,
+                    effect: animatedEffect,
                     grid: request.grid,
                     selectedZoneIDs: request.selectedZoneIDs,
                     frameTimeSeconds: frameTimeSeconds
@@ -304,17 +313,83 @@ actor OfflineVideoRenderer {
             case .noiseCorruption:
                 currentImage = applyMaskedEffect(
                     baseImage: currentImage,
-                    effect: effect,
+                    effect: animatedEffect,
                     selectedZoneIDs: request.selectedZoneIDs,
                     zoneMaskImage: zoneMaskImage
                 ) { baseImage in
-                    applyNoiseCorruption(to: baseImage, effect: effect)
+                    applyNoiseCorruption(to: baseImage, effect: animatedEffect)
                 }
             case .temporalHold:
                 continue
             }
         }
         return currentImage
+    }
+
+    private struct AutomationEvaluator {
+        private let lanesByID: [String: ParameterAutomationLane]
+
+        init(lanes: [ParameterAutomationLane]) {
+            var map: [String: ParameterAutomationLane] = [:]
+            for lane in lanes where lane.isEnabled && !lane.keyframes.isEmpty {
+                map[lane.id] = lane
+            }
+            lanesByID = map
+        }
+
+        func resolvedEffect(effect: EffectState, at timeSeconds: Double) -> EffectState {
+            guard timeSeconds.isFinite else { return effect }
+            var resolved = effect
+
+            for index in resolved.parameters.indices {
+                let parameterID = resolved.parameters[index].id
+                let laneID = "\(effect.type.rawValue)::\(parameterID)"
+                guard let lane = lanesByID[laneID] else { continue }
+                let fallback = resolved.parameters[index].value
+                resolved.parameters[index].value = valueForLane(lane, at: timeSeconds, fallback: fallback)
+            }
+
+            return resolved
+        }
+
+        private func valueForLane(
+            _ lane: ParameterAutomationLane,
+            at timeSeconds: Double,
+            fallback: Double
+        ) -> Double {
+            let keyframes = lane.keyframes.sorted { $0.timeSeconds < $1.timeSeconds }
+            guard !keyframes.isEmpty else { return fallback }
+            guard keyframes.count > 1 else { return keyframes[0].value }
+
+            if timeSeconds <= keyframes[0].timeSeconds {
+                return keyframes[0].value
+            }
+
+            if timeSeconds >= keyframes[keyframes.count - 1].timeSeconds {
+                return keyframes[keyframes.count - 1].value
+            }
+
+            var previous = keyframes[0]
+            for index in 1..<keyframes.count {
+                let next = keyframes[index]
+                if timeSeconds <= next.timeSeconds {
+                    switch lane.interpolation {
+                    case .hold:
+                        return previous.value
+                    case .linear:
+                        let delta = next.timeSeconds - previous.timeSeconds
+                        if delta <= 0.000_001 {
+                            return next.value
+                        }
+                        let t = (timeSeconds - previous.timeSeconds) / delta
+                        return previous.value + ((next.value - previous.value) * t)
+                    }
+                }
+                previous = next
+            }
+
+            return keyframes[keyframes.count - 1].value
+        }
     }
 
     private func applyMaskedEffect(

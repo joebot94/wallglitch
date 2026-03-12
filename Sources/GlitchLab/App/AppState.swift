@@ -10,6 +10,8 @@ final class AppState: ObservableObject {
     @Published var exportProfile: ExportProfile = .h264
     @Published var compareMode: PreviewCompareMode = .effected
     @Published var soloEffect: EffectType?
+    @Published var automationEnabled: Bool = true
+    @Published var automationLanes: [ParameterAutomationLane] = []
     @Published var videoURL: URL?
     @Published var videoInfo: VideoAssetInfo?
     @Published var timeline: TimelineState = TimelineState()
@@ -42,7 +44,11 @@ final class AppState: ObservableObject {
 
     var effectiveEffects: [EffectState] {
         if effectiveEffectsBypassed {
-            return effects
+            return effects.map { effect in
+                var copy = effect
+                copy.isEnabled = false
+                return copy
+            }
         }
         guard let soloEffect else {
             return effects
@@ -56,6 +62,12 @@ final class AppState: ObservableObject {
         }
     }
 
+    var totalAutomationKeyframeCount: Int {
+        automationLanes.reduce(0) { partial, lane in
+            partial + lane.keyframes.count
+        }
+    }
+
     func appendLog(_ message: String) {
         commandLog.append(CommandLogEntry(timestamp: Date(), message: message))
         if commandLog.count > 1000 {
@@ -65,5 +77,11 @@ final class AppState: ObservableObject {
 
     func effectState(for type: EffectType) -> EffectState? {
         effects.first(where: { $0.type == type })
+    }
+
+    func automationLane(effect: EffectType, parameterID: String) -> ParameterAutomationLane? {
+        automationLanes.first {
+            $0.effect == effect && $0.parameterID == parameterID
+        }
     }
 }

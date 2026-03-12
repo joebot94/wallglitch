@@ -69,6 +69,10 @@ struct PreviewPane: View {
                 Text("Solo: \(soloEffect.displayName)")
                     .font(.caption2)
             }
+            if appState.automationEnabled {
+                Text("Automation: \(appState.totalAutomationKeyframeCount) kf")
+                    .font(.caption2)
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

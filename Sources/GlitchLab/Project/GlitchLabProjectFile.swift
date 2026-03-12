@@ -1,7 +1,7 @@
 import Foundation
 
 struct GlitchLabProjectFile: Codable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     var schemaVersion: Int = GlitchLabProjectFile.currentSchemaVersion
     var savedAt: Date = Date()
@@ -11,6 +11,8 @@ struct GlitchLabProjectFile: Codable {
     var exportProfile: ExportProfile
     var compareMode: PreviewCompareMode
     var soloEffect: EffectType?
+    var automationEnabled: Bool = true
+    var automationLanes: [ParameterAutomationLane] = []
     var videoPath: String?
     var gridConfiguration: GridConfiguration
     var selectedZoneIDs: [Int]

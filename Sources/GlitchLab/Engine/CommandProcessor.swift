@@ -9,6 +9,7 @@ final class CommandProcessor: ObservableObject {
     private let projectStore: ProjectStore
     private let offlineRenderer: OfflineVideoRenderer
     private var renderTask: Task<Void, Never>?
+    private let keyframeTimeEpsilon: Double = 0.0005
 
     init(
         appState: AppState,
@@ -80,6 +81,23 @@ final class CommandProcessor: ObservableObject {
         case .setEffectTargetSelectedOnly(let effect, let selectedOnly):
             updateEffect(effect) { $0.selectedZonesOnly = selectedOnly }
             appState.activeEffectPackName = "Custom"
+        case .setAutomationEnabled(let enabled):
+            appState.automationEnabled = enabled
+        case .toggleAutomationKeyframe(let effect, let parameterID, let timeSeconds, let value):
+            toggleAutomationKeyframe(
+                effect: effect,
+                parameterID: parameterID,
+                timeSeconds: timeSeconds,
+                value: value
+            )
+        case .setAutomationLaneEnabled(let effect, let parameterID, let enabled):
+            setAutomationLaneEnabled(effect: effect, parameterID: parameterID, enabled: enabled)
+        case .setAutomationInterpolation(let effect, let parameterID, let mode):
+            setAutomationInterpolation(effect: effect, parameterID: parameterID, mode: mode)
+        case .clearAutomationLane(let effect, let parameterID):
+            clearAutomationLane(effect: effect, parameterID: parameterID)
+        case .clearAllAutomation:
+            appState.automationLanes.removeAll()
         case .setCompareMode(let mode):
             appState.compareMode = mode
         case .setSoloEffect(let effect):
@@ -118,6 +136,8 @@ final class CommandProcessor: ObservableObject {
             exportProfile: appState.exportProfile,
             compareMode: appState.compareMode,
             soloEffect: appState.soloEffect,
+            automationEnabled: appState.automationEnabled,
+            automationLanes: appState.automationLanes,
             videoPath: appState.videoURL?.path,
             gridConfiguration: appState.gridConfiguration,
             selectedZoneIDs: appState.zoneSelection.sortedIDs,
@@ -153,6 +173,7 @@ final class CommandProcessor: ObservableObject {
         appState.exportProfile = file.exportProfile
         appState.compareMode = file.compareMode
         appState.soloEffect = file.soloEffect
+        appState.automationEnabled = file.automationEnabled
         appState.gridConfiguration = file.gridConfiguration.clamped
         appState.activeZonePreset = file.activeZonePreset
 
@@ -161,6 +182,7 @@ final class CommandProcessor: ObservableObject {
         appState.zoneSelection = selection
 
         appState.effects = mergeLoadedEffects(file.effects)
+        appState.automationLanes = normalizeAutomationLanes(file.automationLanes)
 
         appState.renderQueue.removeAll()
         appState.activeRenderJob = nil
@@ -316,7 +338,9 @@ final class CommandProcessor: ObservableObject {
             grid: appState.gridConfiguration,
             selectedZoneIDs: appState.zoneSelection.selectedZoneIDs,
             compareMode: appState.compareMode,
-            soloEffect: appState.soloEffect
+            soloEffect: appState.soloEffect,
+            automationEnabled: appState.automationEnabled,
+            automationLanes: appState.automationLanes
         )
 
         appState.renderQueue.append(item)
@@ -342,7 +366,9 @@ final class CommandProcessor: ObservableObject {
             exportProfile: job.exportProfile,
             effects: effectiveEffects(for: job),
             grid: job.grid,
-            selectedZoneIDs: job.selectedZoneIDs
+            selectedZoneIDs: job.selectedZoneIDs,
+            automationEnabled: job.automationEnabled,
+            automationLanes: job.automationLanes
         )
 
         appState.renderState.phase = .preparing
@@ -434,5 +460,158 @@ final class CommandProcessor: ObservableObject {
             appState.appendLog("[SYS] render_queue_cleared reason=cancel_render")
         }
         appState.appendLog("[SYS] render_cancel_requested")
+    }
+
+    private func toggleAutomationKeyframe(
+        effect: EffectType,
+        parameterID: String,
+        timeSeconds: Double,
+        value: Double
+    ) {
+        guard let parameter = parameterDefinition(effect: effect, parameterID: parameterID) else {
+            appState.appendLog("[WARN] keyframe_parameter_not_found effect=\(effect.commandName) parameter=\(parameterID)")
+            return
+        }
+
+        let maxDuration = max(appState.timeline.durationSeconds, 0)
+        let clampedTime = min(max(timeSeconds, 0), maxDuration > 0 ? maxDuration : timeSeconds)
+        let clampedValue = min(max(value, parameter.minimum), parameter.maximum)
+        let epsilon = max(keyframeTimeEpsilon, appState.timeline.frameDuration * 0.45)
+
+        var lanes = appState.automationLanes
+        let laneID = laneIdentifier(effect: effect, parameterID: parameterID)
+        let laneIndex: Int
+        if let existingIndex = lanes.firstIndex(where: { $0.id == laneID }) {
+            laneIndex = existingIndex
+        } else {
+            lanes.append(
+                ParameterAutomationLane(
+                    effect: effect,
+                    parameterID: parameterID,
+                    isEnabled: true,
+                    interpolation: .linear,
+                    keyframes: []
+                )
+            )
+            laneIndex = lanes.count - 1
+        }
+
+        if let existingKeyframeIndex = lanes[laneIndex].keyframes.firstIndex(where: {
+            abs($0.timeSeconds - clampedTime) <= epsilon
+        }) {
+            lanes[laneIndex].keyframes.remove(at: existingKeyframeIndex)
+            if lanes[laneIndex].keyframes.isEmpty {
+                lanes.remove(at: laneIndex)
+            }
+        } else {
+            lanes[laneIndex].keyframes.append(
+                ParameterKeyframe(timeSeconds: clampedTime, value: clampedValue)
+            )
+            lanes[laneIndex].keyframes.sort { $0.timeSeconds < $1.timeSeconds }
+        }
+
+        appState.automationLanes = lanes
+    }
+
+    private func setAutomationLaneEnabled(effect: EffectType, parameterID: String, enabled: Bool) {
+        guard let parameter = parameterDefinition(effect: effect, parameterID: parameterID) else {
+            appState.appendLog("[WARN] lane_parameter_not_found effect=\(effect.commandName) parameter=\(parameterID)")
+            return
+        }
+
+        var lanes = appState.automationLanes
+        let laneID = laneIdentifier(effect: effect, parameterID: parameterID)
+        if let index = lanes.firstIndex(where: { $0.id == laneID }) {
+            lanes[index].isEnabled = enabled
+        } else {
+            let value = currentEffectParameterValue(effect: effect, parameterID: parameterID) ?? parameter.value
+            lanes.append(
+                ParameterAutomationLane(
+                    effect: effect,
+                    parameterID: parameterID,
+                    isEnabled: enabled,
+                    interpolation: .linear,
+                    keyframes: [ParameterKeyframe(timeSeconds: appState.timeline.currentTimeSeconds, value: value)]
+                )
+            )
+        }
+        appState.automationLanes = lanes
+    }
+
+    private func setAutomationInterpolation(effect: EffectType, parameterID: String, mode: AutomationInterpolation) {
+        let laneID = laneIdentifier(effect: effect, parameterID: parameterID)
+        guard let laneIndex = appState.automationLanes.firstIndex(where: { $0.id == laneID }) else {
+            return
+        }
+        var lanes = appState.automationLanes
+        lanes[laneIndex].interpolation = mode
+        appState.automationLanes = lanes
+    }
+
+    private func clearAutomationLane(effect: EffectType, parameterID: String) {
+        let laneID = laneIdentifier(effect: effect, parameterID: parameterID)
+        appState.automationLanes.removeAll { $0.id == laneID }
+    }
+
+    private func parameterDefinition(effect: EffectType, parameterID: String) -> EffectParameter? {
+        appState
+            .effectState(for: effect)?
+            .parameters
+            .first(where: { $0.id == parameterID })
+    }
+
+    private func currentEffectParameterValue(effect: EffectType, parameterID: String) -> Double? {
+        appState.effectState(for: effect)?
+            .parameters
+            .first(where: { $0.id == parameterID })?
+            .value
+    }
+
+    private func laneIdentifier(effect: EffectType, parameterID: String) -> String {
+        "\(effect.rawValue)::\(parameterID)"
+    }
+
+    private func normalizeAutomationLanes(_ rawLanes: [ParameterAutomationLane]) -> [ParameterAutomationLane] {
+        var normalized: [ParameterAutomationLane] = []
+        let duration = max(appState.timeline.durationSeconds, 0)
+
+        for lane in rawLanes {
+            guard let parameter = parameterDefinition(effect: lane.effect, parameterID: lane.parameterID) else {
+                continue
+            }
+
+            var lastTime: Double?
+            var cleanKeyframes: [ParameterKeyframe] = []
+            let sorted = lane.keyframes.sorted { $0.timeSeconds < $1.timeSeconds }
+
+            for keyframe in sorted {
+                let clampedTime = min(max(keyframe.timeSeconds, 0), duration > 0 ? duration : keyframe.timeSeconds)
+                if let lastTime, abs(lastTime - clampedTime) <= keyframeTimeEpsilon {
+                    cleanKeyframes[cleanKeyframes.count - 1].value = min(max(keyframe.value, parameter.minimum), parameter.maximum)
+                } else {
+                    cleanKeyframes.append(
+                        ParameterKeyframe(
+                            id: keyframe.id,
+                            timeSeconds: clampedTime,
+                            value: min(max(keyframe.value, parameter.minimum), parameter.maximum)
+                        )
+                    )
+                    lastTime = clampedTime
+                }
+            }
+
+            guard !cleanKeyframes.isEmpty else { continue }
+            normalized.append(
+                ParameterAutomationLane(
+                    effect: lane.effect,
+                    parameterID: lane.parameterID,
+                    isEnabled: lane.isEnabled,
+                    interpolation: lane.interpolation,
+                    keyframes: cleanKeyframes
+                )
+            )
+        }
+
+        return normalized
     }
 }

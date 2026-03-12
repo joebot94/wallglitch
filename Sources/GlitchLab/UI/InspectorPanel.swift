@@ -68,6 +68,8 @@ struct InspectorPanel: View {
             LabeledContent("Profile", value: appState.exportProfile.rawValue)
             LabeledContent("Compare", value: appState.compareMode.rawValue)
             LabeledContent("Solo", value: appState.soloEffect?.displayName ?? "Off")
+            LabeledContent("Automation", value: appState.automationEnabled ? "On" : "Off")
+            LabeledContent("Keyframes", value: "\(appState.totalAutomationKeyframeCount)")
             LabeledContent("Status", value: appState.renderState.statusText)
             if let activeRenderJob = appState.activeRenderJob {
                 LabeledContent("Now Rendering", value: activeRenderJob.sourceName)

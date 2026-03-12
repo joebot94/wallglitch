@@ -8,6 +8,23 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.18] - 2026-03-12
+
+- Added command-driven automation/keyframe system for effect parameters:
+  - `set_automation_enabled`
+  - `toggle_keyframe`
+  - `set_lane_enabled`
+  - `set_lane_mode`
+  - `clear_lane`
+  - `clear_all_automation`
+- Added per-parameter automation controls in Effects panel:
+  - `Add Key` / `Del Key` at current playhead time
+  - lane enable checkbox
+  - interpolation menu (`Hold`, `Linear`)
+- Added global automation summary/toggle with keyframe count.
+- Render pipeline now evaluates animated parameter values per frame during export.
+- Project persistence now includes automation state and keyframe lanes (`.glitchlab` schema v2).
+
 ## [v0.1.17] - 2026-03-11
 
 - Added command-driven project persistence:
