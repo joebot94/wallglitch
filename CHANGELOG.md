@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.32] - 2026-03-12
+
+- Stabilized native toolbar layout by replacing variable-width row/column steppers with fixed-width `Rows` and `Cols` menus.
+- Fixed custom grid controls rendering blank near the `Grid` control by using explicit text menu labels (`Rows N`, `Cols N`) in the toolbar.
+- Reduced top-bar jitter from variable zone preset names by using a fixed-width zone label (`Zone All`, `Zone Custom`, `Zone Preset`).
+- Pinned principal project title area to a fixed width with truncation to avoid toolbar reflow from long names.
+
 ## [v0.1.31] - 2026-03-12
 
 - Improved automation/keyframe UX to prevent accidental key deletion:

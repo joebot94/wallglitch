@@ -58,7 +58,7 @@ struct MainWindowView: View {
         }
 
         ToolbarItemGroup(placement: .automatic) {
-            Menu(gridToolbarTitle) {
+            Menu {
                 ForEach(GridPreset.allCases) { preset in
                     Button(preset.rawValue) {
                         commandProcessor.process(.setGrid(rows: preset.rows, cols: preset.cols))
@@ -68,42 +68,46 @@ struct MainWindowView: View {
                 Divider()
 
                 Text("Custom: \(appState.gridConfiguration.label)")
+            } label: {
+                Text(gridToolbarTitle)
+                    .frame(width: 88, alignment: .leading)
             }
 
-            Stepper(
-                "Rows \(appState.gridConfiguration.rows)",
-                value: Binding(
-                    get: { appState.gridConfiguration.rows },
-                    set: { newRows in
+            Menu {
+                ForEach(1...16, id: \.self) { row in
+                    Button("Rows \(row)") {
                         commandProcessor.process(
-                            .setGrid(rows: newRows, cols: appState.gridConfiguration.cols)
+                            .setGrid(rows: row, cols: appState.gridConfiguration.cols)
                         )
                     }
-                ),
-                in: 1...16
-            )
-            .frame(width: 110)
+                }
+            } label: {
+                Text("Rows \(appState.gridConfiguration.rows)")
+                    .frame(width: 68, alignment: .leading)
+            }
 
-            Stepper(
-                "Cols \(appState.gridConfiguration.cols)",
-                value: Binding(
-                    get: { appState.gridConfiguration.cols },
-                    set: { newCols in
+            Menu {
+                ForEach(1...16, id: \.self) { col in
+                    Button("Cols \(col)") {
                         commandProcessor.process(
-                            .setGrid(rows: appState.gridConfiguration.rows, cols: newCols)
+                            .setGrid(rows: appState.gridConfiguration.rows, cols: col)
                         )
                     }
-                ),
-                in: 1...16
-            )
-            .frame(width: 110)
+                }
+            } label: {
+                Text("Cols \(appState.gridConfiguration.cols)")
+                    .frame(width: 68, alignment: .leading)
+            }
 
-            Menu("Zone \(appState.activeZonePreset.rawValue)") {
+            Menu {
                 ForEach(ZoneSelectionPreset.allCases) { preset in
                     Button(preset.rawValue) {
                         commandProcessor.process(.applyZonePreset(preset: preset))
                     }
                 }
+            } label: {
+                Text(zoneToolbarTitle)
+                    .frame(width: 90, alignment: .leading)
             }
 
             Button("Clear Zones") {
@@ -156,13 +160,16 @@ struct MainWindowView: View {
         }
 
         ToolbarItem(placement: .principal) {
-            VStack(alignment: .trailing, spacing: 1) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(appState.projectName)
                     .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text("Preset: \(appState.activePresetName)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .frame(width: 190, alignment: .leading)
         }
     }
 
@@ -207,6 +214,17 @@ struct MainWindowView: View {
             return "Grid \(preset.rawValue)"
         }
         return "Grid \(appState.gridConfiguration.label)"
+    }
+
+    private var zoneToolbarTitle: String {
+        switch appState.activeZonePreset {
+        case .custom:
+            return "Zone Custom"
+        case .all:
+            return "Zone All"
+        default:
+            return "Zone Preset"
+        }
     }
 }
 
