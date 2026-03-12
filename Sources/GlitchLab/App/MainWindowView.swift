@@ -28,8 +28,17 @@ struct MainWindowView: View {
                     .frame(width: 360)
             }
             Divider()
-            LogPanel()
-                .frame(height: 190)
+            HStack(spacing: 0) {
+                LogPanel()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                Divider()
+
+                BottomRightPanel()
+                    .frame(width: 360)
+                    .frame(maxHeight: .infinity)
+            }
+            .frame(height: 190)
         }
         .fileImporter(
             isPresented: $isFileImporterPresented,
@@ -206,6 +215,8 @@ struct MainWindowView: View {
             .padding(.vertical, 10)
             .frame(minWidth: 1420, alignment: .leading)
         }
+        .frame(height: 60)
+        .clipped()
         .background(.ultraThinMaterial)
     }
 

@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.20] - 2026-03-12
+
+- Fixed intermittent top-toolbar disappearance by pinning toolbar height and clipping behavior.
+- Refined bottom layout:
+  - command log now occupies left/center bottom region
+  - added dedicated bottom-right continuation column under the effects sidebar (`Render Queue`)
+  - queue controls and queued-item removal are now available in that bottom-right panel
+
 ## [v0.1.19] - 2026-03-12
 
 - Fixed top toolbar clipping/cutoff on narrower window widths and longer status text.
