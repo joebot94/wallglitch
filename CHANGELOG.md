@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.21] - 2026-03-12
+
+- Reworked top toolbar into a stable two-row layout to prevent disappearing controls when video state changes.
+- Removed spacer-in-horizontal-scroll toolbar pattern that could scroll into blank regions after load/update events.
+- Kept primary controls horizontally scrollable while pinning status/project metadata in a dedicated second row.
+
 ## [v0.1.20] - 2026-03-12
 
 - Fixed intermittent top-toolbar disappearance by pinning toolbar height and clipping behavior.
