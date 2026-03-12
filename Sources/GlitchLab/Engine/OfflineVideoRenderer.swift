@@ -142,6 +142,7 @@ actor OfflineVideoRenderer {
             grid: request.grid,
             selectedZoneIDs: request.selectedZoneIDs
         )
+        var audioFinished = (audioReaderOutput == nil || audioWriterInput == nil)
 
         while reader.status == .reading {
             try Task.checkCancellation()
@@ -185,6 +186,19 @@ actor OfflineVideoRenderer {
             let seconds = CMTimeGetSeconds(presentationTime)
             let progress = min(max(seconds / durationSeconds, 0), 1)
             await onProgress(progress)
+
+            if
+                !audioFinished,
+                let audioReaderOutput,
+                let audioWriterInput
+            {
+                audioFinished = try appendAvailableAudioSamples(
+                    output: audioReaderOutput,
+                    input: audioWriterInput,
+                    writer: writer,
+                    maxSamples: 32
+                )
+            }
         }
 
         videoWriterInput.markAsFinished()
@@ -193,7 +207,7 @@ actor OfflineVideoRenderer {
             let audioReaderOutput,
             let audioWriterInput
         {
-            while true {
+            while !audioFinished {
                 try Task.checkCancellation()
 
                 try await waitUntilReadyForMoreMediaData(
@@ -202,17 +216,13 @@ actor OfflineVideoRenderer {
                     reader: reader
                 )
 
-                guard let audioSampleBuffer = audioReaderOutput.copyNextSampleBuffer() else {
-                    break
-                }
-
-                if !audioWriterInput.append(audioSampleBuffer) {
-                    throw OfflineVideoRendererError.writerFailed(
-                        writer.error?.localizedDescription ?? "Failed appending audio sample."
-                    )
-                }
+                audioFinished = try appendAvailableAudioSamples(
+                    output: audioReaderOutput,
+                    input: audioWriterInput,
+                    writer: writer,
+                    maxSamples: 256
+                )
             }
-            audioWriterInput.markAsFinished()
         }
 
         if Task.isCancelled {
@@ -521,6 +531,7 @@ actor OfflineVideoRenderer {
         writer: AVAssetWriter,
         reader: AVAssetReader
     ) async throws {
+        let waitStart = Date()
         while !input.isReadyForMoreMediaData {
             try Task.checkCancellation()
 
@@ -537,9 +548,37 @@ actor OfflineVideoRenderer {
                     reader.error?.localizedDescription ?? "Reader failed while waiting for writer readiness."
                 )
             }
+            if Date().timeIntervalSince(waitStart) > 15 {
+                throw OfflineVideoRendererError.writerFailed(
+                    "Timed out waiting for writer input readiness."
+                )
+            }
 
             try await Task.sleep(nanoseconds: 1_000_000)
         }
+    }
+
+    private func appendAvailableAudioSamples(
+        output: AVAssetReaderTrackOutput,
+        input: AVAssetWriterInput,
+        writer: AVAssetWriter,
+        maxSamples: Int
+    ) throws -> Bool {
+        var appended = 0
+        while input.isReadyForMoreMediaData && appended < maxSamples {
+            guard let audioSampleBuffer = output.copyNextSampleBuffer() else {
+                input.markAsFinished()
+                return true
+            }
+
+            if !input.append(audioSampleBuffer) {
+                throw OfflineVideoRendererError.writerFailed(
+                    writer.error?.localizedDescription ?? "Failed appending audio sample."
+                )
+            }
+            appended += 1
+        }
+        return false
     }
 
     private func finishWriting(writer: AVAssetWriter) async throws {
