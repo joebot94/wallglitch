@@ -4,8 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Planned: add remaining real export effects (`Zone Swap`, `Temporal Hold`).
+- Planned: add remaining real export effects (`Temporal Hold`).
 - Planned: add export profile options (quality/bitrate presets).
+
+## [v0.1.12] - 2026-03-11
+
+- Added real `Zone Swap` export implementation with obvious tile-to-tile swaps.
+- Wired `Zone Swap` to existing parameters (`swap_rate`, `pair_count`) and selected-zones behavior.
+- Kept swap-pair work capped for stable performance on 4K and long clips.
 
 ## [v0.1.11] - 2026-03-11
 

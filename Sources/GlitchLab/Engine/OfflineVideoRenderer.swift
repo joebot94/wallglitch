@@ -157,10 +157,12 @@ actor OfflineVideoRenderer {
             }
 
             let inputImage = CIImage(cvImageBuffer: imageBuffer)
+            let frameTimeSeconds = CMTimeGetSeconds(presentationTime)
             let processed = applyEffects(
                 to: inputImage,
                 request: request,
-                zoneMaskImage: zoneMaskImage
+                zoneMaskImage: zoneMaskImage,
+                frameTimeSeconds: frameTimeSeconds.isFinite ? frameTimeSeconds : 0
             )
 
             try await waitUntilReadyForMoreMediaData(
@@ -246,7 +248,8 @@ actor OfflineVideoRenderer {
     private func applyEffects(
         to image: CIImage,
         request: RenderRequest,
-        zoneMaskImage: CIImage?
+        zoneMaskImage: CIImage?,
+        frameTimeSeconds: Double
     ) -> CIImage {
         var currentImage = image
         for effect in request.effects where effect.isEnabled {
@@ -287,6 +290,14 @@ actor OfflineVideoRenderer {
                 ) { baseImage in
                     applyBlockScramble(to: baseImage, effect: effect)
                 }
+            case .zoneSwap:
+                currentImage = applyZoneSwap(
+                    to: currentImage,
+                    effect: effect,
+                    grid: request.grid,
+                    selectedZoneIDs: request.selectedZoneIDs,
+                    frameTimeSeconds: frameTimeSeconds
+                )
             case .noiseCorruption:
                 currentImage = applyMaskedEffect(
                     baseImage: currentImage,
@@ -296,7 +307,7 @@ actor OfflineVideoRenderer {
                 ) { baseImage in
                     applyNoiseCorruption(to: baseImage, effect: effect)
                 }
-            case .zoneSwap, .temporalHold:
+            case .temporalHold:
                 continue
             }
         }
@@ -506,6 +517,76 @@ actor OfflineVideoRenderer {
         return output
     }
 
+    private func applyZoneSwap(
+        to image: CIImage,
+        effect: EffectState,
+        grid: GridConfiguration,
+        selectedZoneIDs: Set<Int>,
+        frameTimeSeconds: Double
+    ) -> CIImage {
+        let swapRate = min(max(parameterValue(in: effect, id: "swap_rate", defaultValue: 0), 0), 1)
+        if swapRate <= 0 { return image }
+
+        let zonePool: [Int]
+        if effect.selectedZonesOnly, !selectedZoneIDs.isEmpty {
+            zonePool = selectedZoneIDs.sorted()
+        } else {
+            zonePool = Array(1...max(grid.zoneCount, 0))
+        }
+
+        if zonePool.count < 2 {
+            return image
+        }
+
+        let requestedPairs = Int(parameterValue(in: effect, id: "pair_count", defaultValue: 4).rounded())
+        let maxPairCapacity = min(zonePool.count / 2, 24)
+        let cappedPairs = min(max(requestedPairs, 1), maxPairCapacity)
+        let activePairs = min(
+            max(1, Int((Double(cappedPairs) * max(swapRate, 0.08)).rounded())),
+            cappedPairs
+        )
+
+        var generator = SeededGenerator(seed: seedForZoneSwap(frameTimeSeconds: frameTimeSeconds, grid: grid))
+        var shuffledPool = zonePool
+        shuffle(&shuffledPool, using: &generator)
+
+        let source = image
+        var output = image
+        for index in 0..<activePairs {
+            let firstID = shuffledPool[index * 2]
+            let secondID = shuffledPool[(index * 2) + 1]
+
+            guard
+                let firstRect = rectForZone(id: firstID, grid: grid, extent: source.extent),
+                let secondRect = rectForZone(id: secondID, grid: grid, extent: source.extent)
+            else {
+                continue
+            }
+
+            let firstTile = source
+                .cropped(to: firstRect)
+                .transformed(
+                    by: CGAffineTransform(
+                        translationX: secondRect.origin.x - firstRect.origin.x,
+                        y: secondRect.origin.y - firstRect.origin.y
+                    )
+                )
+            let secondTile = source
+                .cropped(to: secondRect)
+                .transformed(
+                    by: CGAffineTransform(
+                        translationX: firstRect.origin.x - secondRect.origin.x,
+                        y: firstRect.origin.y - secondRect.origin.y
+                    )
+                )
+
+            output = firstTile.composited(over: output)
+            output = secondTile.composited(over: output)
+        }
+
+        return output.cropped(to: source.extent)
+    }
+
     private func isolateChannel(
         _ image: CIImage,
         red: Double,
@@ -529,6 +610,68 @@ actor OfflineVideoRenderer {
         defaultValue: Double
     ) -> Double {
         effect.parameters.first(where: { $0.id == id })?.value ?? defaultValue
+    }
+
+    private func rectForZone(
+        id: Int,
+        grid: GridConfiguration,
+        extent: CGRect
+    ) -> CGRect? {
+        let cols = max(grid.cols, 1)
+        let rows = max(grid.rows, 1)
+        guard id >= 1, id <= cols * rows else { return nil }
+
+        let rowFromTop = (id - 1) / cols
+        let col = (id - 1) % cols
+        let flippedRow = (rows - 1) - rowFromTop
+
+        let cellWidth = extent.width / CGFloat(cols)
+        let cellHeight = extent.height / CGFloat(rows)
+
+        let rect = CGRect(
+            x: extent.origin.x + (CGFloat(col) * cellWidth),
+            y: extent.origin.y + (CGFloat(flippedRow) * cellHeight),
+            width: ceil(cellWidth),
+            height: ceil(cellHeight)
+        ).intersection(extent)
+
+        return rect.isNull || rect.isEmpty ? nil : rect
+    }
+
+    private func seedForZoneSwap(frameTimeSeconds: Double, grid: GridConfiguration) -> UInt64 {
+        let frameBucket = UInt64((frameTimeSeconds * 60).rounded())
+        let gridSeed = UInt64((grid.rows * 131) ^ (grid.cols * 977))
+        return frameBucket &* 1_315_423_911 ^ gridSeed &+ 0x9E3779B97F4A7C15
+    }
+
+    private func shuffle(_ array: inout [Int], using generator: inout SeededGenerator) {
+        guard array.count > 1 else { return }
+        var index = array.count - 1
+        while index > 0 {
+            let swapIndex = generator.nextInt(upperBound: index + 1)
+            if swapIndex != index {
+                array.swapAt(index, swapIndex)
+            }
+            index -= 1
+        }
+    }
+
+    private struct SeededGenerator {
+        private var state: UInt64
+
+        init(seed: UInt64) {
+            self.state = seed == 0 ? 0xD1B54A32D192ED03 : seed
+        }
+
+        mutating func next() -> UInt64 {
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            return state
+        }
+
+        mutating func nextInt(upperBound: Int) -> Int {
+            guard upperBound > 1 else { return 0 }
+            return Int(next() % UInt64(upperBound))
+        }
     }
 
     private func makeZoneMaskImage(
