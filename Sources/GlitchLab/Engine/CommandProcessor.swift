@@ -57,6 +57,8 @@ final class CommandProcessor: ObservableObject {
         case .stepFrame(let delta):
             let step = Double(delta) * appState.timeline.frameDuration
             setTimelineCurrentTime(appState.timeline.currentTimeSeconds + step)
+        case .setExportProfile(let profile):
+            appState.exportProfile = profile
         case .setEffectEnabled(let effect, let enabled):
             updateEffect(effect) { $0.isEnabled = enabled }
             appState.activeEffectPackName = "Custom"
@@ -194,6 +196,7 @@ final class CommandProcessor: ObservableObject {
         let request = RenderRequest(
             sourceURL: sourceURL,
             outputURL: outputURL,
+            exportProfile: appState.exportProfile,
             effects: appState.effects,
             grid: appState.gridConfiguration,
             selectedZoneIDs: appState.zoneSelection.selectedZoneIDs
@@ -201,7 +204,7 @@ final class CommandProcessor: ObservableObject {
 
         appState.renderState.phase = .preparing
         appState.appendLog(
-            "[SYS] render_started source=\(sourceURL.lastPathComponent) selected_zones=\(request.selectedZoneIDs.count)"
+            "[SYS] render_started source=\(sourceURL.lastPathComponent) profile=\(request.exportProfile.commandName) selected_zones=\(request.selectedZoneIDs.count)"
         )
 
         let renderer = offlineRenderer

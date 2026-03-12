@@ -26,6 +26,24 @@ enum GridPreset: String, CaseIterable, Identifiable {
     }
 }
 
+enum ExportProfile: String, CaseIterable, Identifiable, Codable {
+    case h264 = "H.264"
+    case hevc = "HEVC"
+    case proRes422 = "ProRes 422"
+    case proRes422HQ = "ProRes 422 HQ"
+
+    var id: String { rawValue }
+
+    var commandName: String {
+        switch self {
+        case .h264: return "h264"
+        case .hevc: return "hevc"
+        case .proRes422: return "prores_422"
+        case .proRes422HQ: return "prores_422_hq"
+        }
+    }
+}
+
 struct GridConfiguration: Equatable {
     var rows: Int
     var cols: Int
@@ -202,6 +220,7 @@ enum AppCommand {
     case applyZonePreset(preset: ZoneSelectionPreset)
     case seek(seconds: Double)
     case stepFrame(delta: Int)
+    case setExportProfile(profile: ExportProfile)
     case setEffectEnabled(effect: EffectType, enabled: Bool)
     case setEffectParameter(effect: EffectType, parameterID: String, value: Double)
     case setEffectTargetSelectedOnly(effect: EffectType, selectedOnly: Bool)
@@ -234,6 +253,8 @@ extension AppCommand {
             return String(format: "[CMD] seek time=%.3f", seconds)
         case .stepFrame(let delta):
             return "[CMD] step_frame delta=\(delta)"
+        case .setExportProfile(let profile):
+            return "[CMD] set_export_profile name=\(profile.commandName)"
         case .setEffectEnabled(let effect, let enabled):
             return "[CMD] set_effect_enabled effect=\(effect.commandName) enabled=\(enabled)"
         case .setEffectParameter(let effect, let parameterID, let value):

@@ -5,8 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - Planned: add remaining real export effects (`Temporal Hold`).
-- Planned: add export profile options (quality/bitrate presets).
+- Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
+
+## [v0.1.16] - 2026-03-11
+
+- Added command-driven export profile selection:
+  - `H.264`
+  - `HEVC`
+  - `ProRes 422`
+  - `ProRes 422 HQ`
+- Added export profile picker in toolbar and profile display in inspector.
+- Renderer now maps selected profile to codec/output settings and tags output filename with profile name.
 
 ## [v0.1.15] - 2026-03-11
 

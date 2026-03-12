@@ -6,6 +6,7 @@ final class AppState: ObservableObject {
     @Published var projectName: String = "GlitchLab Session"
     @Published var activePresetName: String = "Manual"
     @Published var activeEffectPackName: String = "Custom"
+    @Published var exportProfile: ExportProfile = .h264
     @Published var videoURL: URL?
     @Published var videoInfo: VideoAssetInfo?
     @Published var timeline: TimelineState = TimelineState()

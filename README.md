@@ -22,6 +22,7 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
 - Offline render job runner:
   - command-driven start/cancel (`render`, `cancel_render`)
   - in-app progress/status
+  - export profile selection (`H.264`, `HEVC`, `ProRes 422`, `ProRes 422 HQ`)
   - source audio passthrough in export
   - output writes to `~/Documents/GlitchLabRenders` when output path is not supplied
 - Real effect path in render pipeline:

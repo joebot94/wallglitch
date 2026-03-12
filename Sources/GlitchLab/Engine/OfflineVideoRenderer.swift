@@ -6,6 +6,7 @@ import Foundation
 struct RenderRequest {
     let sourceURL: URL
     let outputURL: URL?
+    let exportProfile: ExportProfile
     let effects: [EffectState]
     let grid: GridConfiguration
     let selectedZoneIDs: Set<Int>
@@ -53,7 +54,11 @@ actor OfflineVideoRenderer {
         let height = max(Int(naturalSize.height.rounded()), 1)
         let durationSeconds = max(CMTimeGetSeconds(duration), 0.001)
 
-        let outputURL = try resolvedOutputURL(sourceURL: request.sourceURL, outputURL: request.outputURL)
+        let outputURL = try resolvedOutputURL(
+            sourceURL: request.sourceURL,
+            outputURL: request.outputURL,
+            exportProfile: request.exportProfile
+        )
         if FileManager.default.fileExists(atPath: outputURL.path) {
             try FileManager.default.removeItem(at: outputURL)
         }
@@ -83,17 +88,15 @@ actor OfflineVideoRenderer {
             audioReaderOutput = candidate
         }
 
-        let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
+        let writerConfig = makeWriterVideoConfig(
+            profile: request.exportProfile,
+            width: width,
+            height: height
+        )
+        let writer = try AVAssetWriter(outputURL: outputURL, fileType: writerConfig.fileType)
         let videoWriterInput = AVAssetWriterInput(
             mediaType: .video,
-            outputSettings: [
-                AVVideoCodecKey: AVVideoCodecType.h264,
-                AVVideoWidthKey: width,
-                AVVideoHeightKey: height,
-                AVVideoCompressionPropertiesKey: [
-                    AVVideoAverageBitRateKey: 16_000_000
-                ]
-            ]
+            outputSettings: writerConfig.outputSettings
         )
         videoWriterInput.expectsMediaDataInRealTime = false
         videoWriterInput.transform = transform
@@ -805,7 +808,48 @@ actor OfflineVideoRenderer {
         }
     }
 
-    private func resolvedOutputURL(sourceURL: URL, outputURL: URL?) throws -> URL {
+    private func makeWriterVideoConfig(
+        profile: ExportProfile,
+        width: Int,
+        height: Int
+    ) -> (fileType: AVFileType, outputSettings: [String: Any]) {
+        let codec: AVVideoCodecType
+        let averageBitRate: Int?
+
+        switch profile {
+        case .h264:
+            codec = .h264
+            averageBitRate = 16_000_000
+        case .hevc:
+            codec = .hevc
+            averageBitRate = 14_000_000
+        case .proRes422:
+            codec = .proRes422
+            averageBitRate = nil
+        case .proRes422HQ:
+            codec = .proRes422HQ
+            averageBitRate = nil
+        }
+
+        var outputSettings: [String: Any] = [
+            AVVideoCodecKey: codec,
+            AVVideoWidthKey: width,
+            AVVideoHeightKey: height
+        ]
+        if let averageBitRate {
+            outputSettings[AVVideoCompressionPropertiesKey] = [
+                AVVideoAverageBitRateKey: averageBitRate
+            ]
+        }
+
+        return (.mov, outputSettings)
+    }
+
+    private func resolvedOutputURL(
+        sourceURL: URL,
+        outputURL: URL?,
+        exportProfile: ExportProfile
+    ) throws -> URL {
         if let outputURL {
             return outputURL
         }
@@ -819,6 +863,8 @@ actor OfflineVideoRenderer {
             .string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
         let stem = sourceURL.deletingPathExtension().lastPathComponent
-        return rendersDirectory.appendingPathComponent("\(stem)-glitch-\(timestamp).mov")
+        return rendersDirectory.appendingPathComponent(
+            "\(stem)-glitch-\(exportProfile.commandName)-\(timestamp).mov"
+        )
     }
 }

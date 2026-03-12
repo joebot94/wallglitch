@@ -64,6 +64,7 @@ struct InspectorPanel: View {
 
             Text("Render")
                 .font(.headline)
+            LabeledContent("Profile", value: appState.exportProfile.rawValue)
             LabeledContent("Status", value: appState.renderState.statusText)
             if appState.renderState.isRunning {
                 ProgressView(value: appState.renderState.progress)

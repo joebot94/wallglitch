@@ -125,6 +125,21 @@ struct MainWindowView: View {
                 commandProcessor.process(.selectAllZones)
             }
 
+            Picker(
+                "Export",
+                selection: Binding(
+                    get: { appState.exportProfile },
+                    set: { profile in
+                        commandProcessor.process(.setExportProfile(profile: profile))
+                    }
+                )
+            ) {
+                ForEach(ExportProfile.allCases) { profile in
+                    Text(profile.rawValue).tag(profile)
+                }
+            }
+            .pickerStyle(.menu)
+
             Button("Render") {
                 commandProcessor.process(.render(outputURL: nil))
             }
