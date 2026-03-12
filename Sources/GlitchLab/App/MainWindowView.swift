@@ -8,6 +8,7 @@ struct MainWindowView: View {
 
     @State private var isFileImporterPresented = false
     @State private var isZonePresetBrowserPresented = false
+    private let titlebarCompensation: CGFloat = 30
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,6 +41,8 @@ struct MainWindowView: View {
             }
             .frame(height: 190)
         }
+        .padding(.top, titlebarCompensation)
+        .ignoresSafeArea(.container, edges: .top)
         .fileImporter(
             isPresented: $isFileImporterPresented,
             allowedContentTypes: [.movie, .quickTimeMovie, .mpeg4Movie],

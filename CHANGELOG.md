@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.26] - 2026-03-12
+
+- Added fixed titlebar compensation for the root editor stack to prevent top-toolbar drift under the macOS title bar after load workflows.
+- Applied explicit top-edge safe-area handling (`ignoresSafeArea(.container, edges: .top)` + fixed offset) to stabilize toolbar visibility through `load_project` and `load_video` transitions.
+
 ## [v0.1.25] - 2026-03-12
 
 - Rolled back top toolbar to a simpler pre-project-style single-row structure to eliminate persistent disappearing/cutoff behavior.
