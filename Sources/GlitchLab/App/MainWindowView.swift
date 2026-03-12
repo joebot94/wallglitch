@@ -5,7 +5,6 @@ struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var commandProcessor: CommandProcessor
 
-    @State private var isFileImporterPresented = false
     @State private var isZonePresetBrowserPresented = false
 
     var body: some View {
@@ -39,25 +38,12 @@ struct MainWindowView: View {
             }
             .frame(height: 190)
         }
-        .fileImporter(
-            isPresented: $isFileImporterPresented,
-            allowedContentTypes: [.movie, .quickTimeMovie, .mpeg4Movie],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                guard let url = urls.first else { return }
-                commandProcessor.process(.loadVideo(url: url))
-            case .failure(let error):
-                appState.appendLog("[ERR] file_import_error error=\(error.localizedDescription)")
-            }
-        }
     }
 
     private var topToolbar: some View {
         HStack(spacing: 12) {
             Button("Open Video") {
-                isFileImporterPresented = true
+                openVideoPanel()
             }
 
             Picker(
@@ -170,5 +156,17 @@ struct MainWindowView: View {
         }
         .padding(12)
         .background(.ultraThinMaterial)
+    }
+
+    private func openVideoPanel() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.movie, .quickTimeMovie, .mpeg4Movie]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.title = "Open Video"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            commandProcessor.process(.loadVideo(url: url))
+        }
     }
 }

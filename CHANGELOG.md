@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.28] - 2026-03-12
+
+- Switched `Open Video` from SwiftUI `.fileImporter` to AppKit `NSOpenPanel` modal flow.
+- Removed SwiftUI importer state from `MainWindowView` to avoid suspected layout/safe-area drift after file dialog interactions.
+- Kept v0.1.15-style top toolbar layout while testing dialog-driven toolbar stability.
+
 ## [v0.1.27] - 2026-03-12
 
 - Reverted top toolbar to v0.1.15-style stable layout (single-row controls, no titlebar compensation hacks).
