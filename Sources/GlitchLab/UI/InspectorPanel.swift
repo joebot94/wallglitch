@@ -10,6 +10,7 @@ struct InspectorPanel: View {
 
             LabeledContent("Name", value: appState.projectName)
             LabeledContent("Preset", value: appState.activePresetName)
+            LabeledContent("Effect Pack", value: appState.activeEffectPackName)
 
             Divider()
 

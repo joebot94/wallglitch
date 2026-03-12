@@ -5,6 +5,7 @@ import SwiftUI
 final class AppState: ObservableObject {
     @Published var projectName: String = "GlitchLab Session"
     @Published var activePresetName: String = "Manual"
+    @Published var activeEffectPackName: String = "Custom"
     @Published var videoURL: URL?
     @Published var videoInfo: VideoAssetInfo?
     @Published var timeline: TimelineState = TimelineState()

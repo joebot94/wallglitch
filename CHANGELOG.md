@@ -6,6 +6,17 @@ All notable changes to this project will be documented in this file.
 
 - Planned: add remaining real export effects (`Temporal Hold`).
 - Planned: add export profile options (quality/bitrate presets).
+- Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
+
+## [v0.1.14] - 2026-03-11
+
+- Added command-driven Effect Packs with bundled multi-effect configurations.
+- Added effect pack catalog in sidebar:
+  - `VHS Wreck`
+  - `Swap Storm`
+  - `Pixel Jolt`
+  - `Soft Corrupt`
+- Added active effect pack tracking in inspector (`Custom` when manually edited).
 
 ## [v0.1.13] - 2026-03-11
 

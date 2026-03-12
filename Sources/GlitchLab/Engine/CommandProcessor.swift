@@ -59,6 +59,7 @@ final class CommandProcessor: ObservableObject {
             setTimelineCurrentTime(appState.timeline.currentTimeSeconds + step)
         case .setEffectEnabled(let effect, let enabled):
             updateEffect(effect) { $0.isEnabled = enabled }
+            appState.activeEffectPackName = "Custom"
         case .setEffectParameter(let effect, let parameterID, let value):
             updateEffect(effect) { current in
                 guard let index = current.parameters.firstIndex(where: { $0.id == parameterID }) else { return }
@@ -66,8 +67,12 @@ final class CommandProcessor: ObservableObject {
                 let maximum = current.parameters[index].maximum
                 current.parameters[index].value = min(max(value, minimum), maximum)
             }
+            appState.activeEffectPackName = "Custom"
         case .setEffectTargetSelectedOnly(let effect, let selectedOnly):
             updateEffect(effect) { $0.selectedZonesOnly = selectedOnly }
+            appState.activeEffectPackName = "Custom"
+        case .applyEffectPack(let name):
+            handleEffectPack(name: name)
         case .applyPreset(let name):
             guard let preset = presetStore.preset(named: name) else {
                 appState.appendLog("[WARN] preset_not_found name=\(name)")
@@ -141,6 +146,38 @@ final class CommandProcessor: ObservableObject {
         var updated = appState.effects
         mutate(&updated[index])
         appState.effects = updated
+    }
+
+    private func handleEffectPack(name: String) {
+        guard let pack = presetStore.effectPack(named: name) else {
+            appState.appendLog("[WARN] effect_pack_not_found name=\(name)")
+            return
+        }
+
+        var updatedEffects = appState.effects
+        for index in updatedEffects.indices {
+            updatedEffects[index].isEnabled = false
+        }
+
+        for setting in pack.effectSettings {
+            guard let index = updatedEffects.firstIndex(where: { $0.type == setting.effect }) else {
+                continue
+            }
+            updatedEffects[index].isEnabled = setting.enabled
+            updatedEffects[index].selectedZonesOnly = setting.selectedZonesOnly
+            for (parameterID, value) in setting.parameterValues {
+                guard let parameterIndex = updatedEffects[index].parameters.firstIndex(where: { $0.id == parameterID }) else {
+                    continue
+                }
+                let minimum = updatedEffects[index].parameters[parameterIndex].minimum
+                let maximum = updatedEffects[index].parameters[parameterIndex].maximum
+                updatedEffects[index].parameters[parameterIndex].value = min(max(value, minimum), maximum)
+            }
+        }
+
+        appState.effects = updatedEffects
+        appState.activeEffectPackName = pack.name
+        appState.appendLog("[SYS] effect_pack_applied name=\(pack.name)")
     }
 
     private func startRender(outputURL: URL?) {

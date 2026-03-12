@@ -205,6 +205,7 @@ enum AppCommand {
     case setEffectEnabled(effect: EffectType, enabled: Bool)
     case setEffectParameter(effect: EffectType, parameterID: String, value: Double)
     case setEffectTargetSelectedOnly(effect: EffectType, selectedOnly: Bool)
+    case applyEffectPack(name: String)
     case applyPreset(name: String)
     case render(outputURL: URL?)
     case cancelRender
@@ -239,6 +240,8 @@ extension AppCommand {
             return "[CMD] set_effect_parameter effect=\(effect.commandName) parameter=\(parameterID) value=\(value)"
         case .setEffectTargetSelectedOnly(let effect, let selectedOnly):
             return "[CMD] set_effect_target effect=\(effect.commandName) selected_only=\(selectedOnly)"
+        case .applyEffectPack(let name):
+            return "[CMD] apply_effect_pack name=\(name)"
         case .applyPreset(let name):
             return "[CMD] apply_preset name=\(name)"
         case .render(let outputURL):

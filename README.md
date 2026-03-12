@@ -35,6 +35,11 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
 - Effect quick presets in UI:
   - Screen Tear: `Subtle`, `Balanced`, `Heavy`, `Brutal`, `Custom`
   - Zone Swap: `Subtle`, `Balanced`, `Heavy`, `Chaos`, `Custom`
+- Effect packs (command-driven):
+  - `VHS Wreck`
+  - `Swap Storm`
+  - `Pixel Jolt`
+  - `Soft Corrupt`
 - Placeholder effect system with typed parameters for:
   - Temporal Hold
   - (other listed effects above are now real in export)
