@@ -4,8 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Planned: add remaining real export effects (`Zone Swap`, `Block Scramble`, `Temporal Hold`).
+- Planned: add remaining real export effects (`Zone Swap`, `Temporal Hold`).
 - Planned: add export profile options (quality/bitrate presets).
+
+## [v0.1.11] - 2026-03-11
+
+- Added `Screen Tear` effect presets in UI (`Subtle`, `Balanced`, `Heavy`, `Brutal`, `Custom`) below sliders.
+- Added real `Block Scramble` export implementation with zone-mask support.
+- Kept `Block Scramble` iterations bounded for stable long/4K renders.
 
 ## [v0.1.10] - 2026-03-11
 

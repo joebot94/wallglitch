@@ -278,6 +278,15 @@ actor OfflineVideoRenderer {
                 ) { baseImage in
                     applyPixelDrift(to: baseImage, effect: effect)
                 }
+            case .blockScramble:
+                currentImage = applyMaskedEffect(
+                    baseImage: currentImage,
+                    effect: effect,
+                    selectedZoneIDs: request.selectedZoneIDs,
+                    zoneMaskImage: zoneMaskImage
+                ) { baseImage in
+                    applyBlockScramble(to: baseImage, effect: effect)
+                }
             case .noiseCorruption:
                 currentImage = applyMaskedEffect(
                     baseImage: currentImage,
@@ -287,7 +296,7 @@ actor OfflineVideoRenderer {
                 ) { baseImage in
                     applyNoiseCorruption(to: baseImage, effect: effect)
                 }
-            case .zoneSwap, .blockScramble, .temporalHold:
+            case .zoneSwap, .temporalHold:
                 continue
             }
         }
@@ -443,6 +452,58 @@ actor OfflineVideoRenderer {
             "CISourceOverCompositing",
             parameters: [kCIInputBackgroundImageKey: image]
         )
+    }
+
+    private func applyBlockScramble(to image: CIImage, effect: EffectState) -> CIImage {
+        let amount = min(max(parameterValue(in: effect, id: "amount", defaultValue: 0), 0), 1)
+        if amount <= 0 { return image }
+
+        // Cap iteration workload for predictable performance on long/4K clips.
+        let requestedIterations = Int(parameterValue(in: effect, id: "iterations", defaultValue: 3).rounded())
+        let iterations = min(max(requestedIterations, 1), 8)
+
+        let extent = image.extent
+        let minDimension = max(1.0, min(extent.width, extent.height))
+        let baseBlockScale = max(6.0, minDimension / (8.0 + (amount * 30.0)))
+
+        var output = image
+        for index in 0..<iterations {
+            let seed = Double(index + 1) * 41.37
+            let mapScale = baseBlockScale + (Double(index) * 0.5)
+
+            let displacementMap = CIFilter(name: "CIRandomGenerator")?.outputImage?
+                .transformed(by: CGAffineTransform(translationX: seed * 0.73, y: seed * 1.11))
+                .cropped(to: extent)
+                .applyingFilter(
+                    "CIPixellate",
+                    parameters: [
+                        kCIInputScaleKey: mapScale,
+                        kCIInputCenterKey: CIVector(x: extent.midX, y: extent.midY)
+                    ]
+                )
+                .applyingFilter(
+                    "CIColorControls",
+                    parameters: [
+                        kCIInputSaturationKey: 0,
+                        kCIInputContrastKey: 1.8
+                    ]
+                )
+                .cropped(to: extent)
+
+            guard let displacementMap else { continue }
+
+            let passStrength = amount * (mapScale * (0.45 + (Double(index) / Double(max(iterations, 1)))))
+            output = output.applyingFilter(
+                "CIDisplacementDistortion",
+                parameters: [
+                    "inputDisplacementImage": displacementMap,
+                    kCIInputScaleKey: passStrength
+                ]
+            )
+            .cropped(to: extent)
+        }
+
+        return output
     }
 
     private func isolateChannel(

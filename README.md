@@ -25,7 +25,7 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
   - source audio passthrough in export
   - output writes to `~/Documents/GlitchLabRenders` when output path is not supplied
 - Real effect path in render pipeline:
-  - `RGB Shift`, `Screen Tear`, `Pixel Drift`, and `Noise Corruption` are applied during export
+  - `RGB Shift`, `Screen Tear`, `Pixel Drift`, `Block Scramble`, and `Noise Corruption` are applied during export
   - selected-zones-only masking is supported for each implemented effect
 - Clickable zone grid overlay with deterministic IDs (left-to-right, top-to-bottom)
 - Grid presets: `2x2`, `3x3`, `4x4`, `8x8`, `16x16`
@@ -33,13 +33,9 @@ Release history lives in [CHANGELOG.md](./CHANGELOG.md).
 - Zone selection preset two-column browser popover (All, 3x3, 2x2 Center, Corners, Cross+, X, diagonals, rows/cols, Outer Ring, Center 1, Custom)
 - Zone selection actions: toggle, clear, select all
 - Placeholder effect system with typed parameters for:
-  - RGB Shift
-  - Screen Tear
-  - Pixel Drift
   - Zone Swap
-  - Block Scramble
   - Temporal Hold
-  - Noise Corruption
+  - (other listed effects above are now real in export)
 - Built-in preset examples
 - In-app command log for all major actions
 - Centralized command processing (`UI -> CommandProcessor -> AppState/Engine`)
