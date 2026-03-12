@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -8,7 +7,6 @@ struct MainWindowView: View {
 
     @State private var isFileImporterPresented = false
     @State private var isZonePresetBrowserPresented = false
-    private let titlebarCompensation: CGFloat = 30
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,8 +39,6 @@ struct MainWindowView: View {
             }
             .frame(height: 190)
         }
-        .padding(.top, titlebarCompensation)
-        .ignoresSafeArea(.container, edges: .top)
         .fileImporter(
             isPresented: $isFileImporterPresented,
             allowedContentTypes: [.movie, .quickTimeMovie, .mpeg4Movie],
@@ -62,14 +58,6 @@ struct MainWindowView: View {
         HStack(spacing: 12) {
             Button("Open Video") {
                 isFileImporterPresented = true
-            }
-
-            Button("Load Project") {
-                openProjectPanel()
-            }
-
-            Button("Save Project") {
-                saveProjectPanel()
             }
 
             Picker(
@@ -146,35 +134,14 @@ struct MainWindowView: View {
                 commandProcessor.process(.selectAllZones)
             }
 
-            Picker(
-                "Export",
-                selection: Binding(
-                    get: { appState.exportProfile },
-                    set: { profile in
-                        commandProcessor.process(.setExportProfile(profile: profile))
-                    }
-                )
-            ) {
-                ForEach(ExportProfile.allCases) { profile in
-                    Text(profile.rawValue).tag(profile)
-                }
-            }
-            .pickerStyle(.menu)
-
-            Button("Queue Render") {
+            Button("Render") {
                 commandProcessor.process(.render(outputURL: nil))
             }
-            .disabled(appState.videoURL == nil)
+            .disabled(appState.renderState.isRunning)
 
             if appState.renderState.isRunning {
                 Button("Cancel Render") {
                     commandProcessor.process(.cancelRender)
-                }
-            }
-
-            if appState.queuedRenderCount > 0 {
-                Button("Clear Queue") {
-                    commandProcessor.process(.clearRenderQueue)
                 }
             }
 
@@ -189,9 +156,9 @@ struct MainWindowView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
-            .frame(minWidth: 160, alignment: .leading)
+            .frame(minWidth: 180, alignment: .leading)
 
-            Spacer(minLength: 8)
+            Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text(appState.projectName)
@@ -200,39 +167,8 @@ struct MainWindowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .frame(minWidth: 170, alignment: .trailing)
         }
         .padding(12)
         .background(.ultraThinMaterial)
-    }
-
-    private func openProjectPanel() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.glitchLabProject]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.title = "Load GlitchLab Project"
-
-        if panel.runModal() == .OK, let url = panel.url {
-            commandProcessor.process(.loadProject(url: url))
-        }
-    }
-
-    private func saveProjectPanel() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.glitchLabProject]
-        panel.title = "Save GlitchLab Project"
-        panel.nameFieldStringValue = "\(appState.projectName).glitchlab"
-        panel.canCreateDirectories = true
-
-        if panel.runModal() == .OK, let url = panel.url {
-            commandProcessor.process(.saveProject(url: url))
-        }
-    }
-}
-
-private extension UTType {
-    static var glitchLabProject: UTType {
-        UTType(filenameExtension: "glitchlab") ?? .json
     }
 }

@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - Planned: add HDR export pipeline (10-bit + color metadata path).
 - Planned: add master-controller/text-app sync adapter for command intake in realtime mode.
 
+## [v0.1.27] - 2026-03-12
+
+- Reverted top toolbar to v0.1.15-style stable layout (single-row controls, no titlebar compensation hacks).
+- Removed recent top-bar load/save/project controls from the toolbar as part of the rollback to maximize stability.
+- Kept core editor layout and newer rendering/effects systems intact.
+
 ## [v0.1.26] - 2026-03-12
 
 - Added fixed titlebar compensation for the root editor stack to prevent top-toolbar drift under the macOS title bar after load workflows.
